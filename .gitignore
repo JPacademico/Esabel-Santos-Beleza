@@ -1,0 +1,21 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Env (contains project keys — keep out of git)
+.env
+.env.local
+.env.*.local
+
+# PWA build output
+dev-dist/
+public/sw.js
+public/workbox-*.js
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.log

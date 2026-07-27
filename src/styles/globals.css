@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   Salon palette. Light = warm rosé on porcelain; dark = deep mocha.
+
+   Colors are stored as raw "R G B" channels (not hex) so Tailwind's opacity
+   modifiers work — e.g. bg-accent/12 compiles to rgb(var(--accent) / 0.12).
+--------------------------------------------------------------------------- */
+:root,
+.light {
+  --bg: 250 247 245;
+  --surface: 255 255 255;
+  --surface-2: 244 238 235;
+  --border: 233 223 218;
+  --text: 43 33 36;
+  --muted: 138 124 128;
+  --accent: 183 110 121;
+  --accent-2: 217 165 172;
+  --accent-fg: 255 255 255;
+  --success: 63 157 109;
+  --warning: 201 138 60;
+  --danger: 192 85 107;
+  --radius: 14px;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: 20 16 15;
+  --surface: 32 26 27;
+  --surface-2: 42 34 36;
+  --border: 56 46 48;
+  --text: 244 236 238;
+  --muted: 169 156 160;
+  --accent: 217 165 172;
+  --accent-2: 183 110 121;
+  --accent-fg: 36 26 28;
+  --success: 87 185 138;
+  --warning: 224 169 96;
+  --danger: 224 119 138;
+  --radius: 14px;
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-bg text-text antialiased;
+    font-family: theme("fontFamily.sans");
+    /* Respect iOS safe areas (notch / home indicator). */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+    overscroll-behavior-y: none;
+  }
+
+  /* Inputs never zoom on iOS when font-size >= 16px. */
+  input,
+  select,
+  textarea,
+  button {
+    font-size: max(16px, 1rem);
+  }
+
+  ::selection {
+    background: rgb(var(--accent-2));
+    color: rgb(var(--accent-fg));
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-lg border border-border bg-surface shadow-card;
+  }
+
+  .field {
+    @apply w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-text
+           placeholder:text-muted outline-none transition
+           focus:border-accent focus:ring-2 focus:ring-accent/25
+           disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-text;
+  }
+
+  /* Bottom nav / floating action safe-area padding. */
+  .pb-safe {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
+  }
+}
+
+/* Thin, unobtrusive scrollbars. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--border)) transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgb(var(--border));
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

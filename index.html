@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Esabel Santos Beleza — Agenda</title>
+    <meta name="description" content="Agenda interna do salão Esabel Santos Beleza" />
+
+    <!-- Theme color follows the active scheme (drives the mobile status bar). -->
+    <meta name="theme-color" content="#b76e79" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#14100f" media="(prefers-color-scheme: dark)" />
+
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ESB Agenda" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
+    <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg" />
+
+    <script>
+      // Apply the stored theme before paint to avoid a flash of the wrong scheme.
+      (function () {
+        try {
+          var stored = localStorage.getItem("esb.theme");
+          var dark = stored
+            ? stored === "dark"
+            : window.matchMedia("(prefers-color-scheme: dark)").matches;
+          document.documentElement.classList.toggle("dark", dark);
+          document.documentElement.classList.toggle("light", !dark);
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
