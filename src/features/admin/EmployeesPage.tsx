@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Crown, MessageCircle, Plus, ShieldCheck, UserMinus, UsersRound } from "lucide-react";
+import { Crown, KeyRound, Plus, ShieldCheck, UserMinus, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Field";
 import { Badge, EmptyState, Skeleton } from "@/components/ui/Feedback";
 import { Modal } from "@/components/ui/Modal";
-import { formatBRPhone, openWhatsApp } from "@/lib/whatsapp";
+import { formatBRPhone } from "@/lib/whatsapp";
 import { friendlyError } from "@/lib/cn";
 import { useAuthStore } from "@/stores/authStore";
 import { CreateEmployeeForm } from "./CreateEmployeeForm";
+import { ResetAccessModal } from "./ResetAccessModal";
 import { useDeleteEmployee, useEmployees } from "./hooks";
 import type { AccountStatus, Profile } from "@/types/domain";
 
@@ -25,6 +26,7 @@ export function EmployeesPage() {
   const deleteMutation = useDeleteEmployee();
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [resetting, setResetting] = useState<Profile | null>(null);
   const [removing, setRemoving] = useState<Profile | null>(null);
   const [reassignTo, setReassignTo] = useState("");
 
@@ -132,18 +134,16 @@ export function EmployeesPage() {
                       )}
                     </Badge>
 
-                    {employee.phone && employee.status === "pending" && (
+                    {/* Re-issues an access link: covers both "never activated"
+                        and "forgot password" — there is no email recovery. */}
+                    {!isAdmin && employee.status !== "inactive" && (
                       <button
-                        onClick={() =>
-                          openWhatsApp(
-                            employee.phone,
-                            `Olá ${employee.full_name.split(" ")[0]}! Sua conta na agenda do salão está pendente de ativação.`,
-                          )
-                        }
-                        aria-label="Cobrar ativação no WhatsApp"
-                        className="rounded-lg p-2 text-success transition hover:bg-success/10"
+                        onClick={() => setResetting(employee)}
+                        aria-label="Reenviar acesso"
+                        title="Reenviar acesso"
+                        className="rounded-lg p-2 text-muted transition hover:bg-accent/10 hover:text-accent"
                       >
-                        <MessageCircle className="h-4 w-4" />
+                        <KeyRound className="h-4 w-4" />
                       </button>
                     )}
 
@@ -168,6 +168,8 @@ export function EmployeesPage() {
       )}
 
       <CreateEmployeeForm open={createOpen} onClose={() => setCreateOpen(false)} />
+
+      <ResetAccessModal employee={resetting} onClose={() => setResetting(null)} />
 
       <Modal
         open={removing !== null}

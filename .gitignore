@@ -2,6 +2,7 @@ node_modules/
 dist/
 dist-ssr/
 *.local
+SETUP.md
 
 # Env (contains project keys — keep out of git)
 .env

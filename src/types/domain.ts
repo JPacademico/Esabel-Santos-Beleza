@@ -38,8 +38,12 @@ export interface NewEmployeeInput {
   phone: string;
 }
 
-export interface CreateEmployeeResult {
+/**
+ * Returned by both create-employee and reset-employee-password.
+ * wa_link is null when the profile has no phone number on file.
+ */
+export interface AccessLinkResult {
   user_id: string;
   setup_url: string;
-  wa_link: string;
+  wa_link: string | null;
 }

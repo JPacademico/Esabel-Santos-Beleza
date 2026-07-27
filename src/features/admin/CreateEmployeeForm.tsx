@@ -1,12 +1,13 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { AtSign, Check, Copy, MessageCircle, Phone, UserRound } from "lucide-react";
+import { AtSign, Phone, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { friendlyError } from "@/lib/cn";
+import { AccessLinkPanel } from "./AccessLinkResult";
 import { useCreateEmployee } from "./hooks";
-import type { CreateEmployeeResult } from "@/types/domain";
+import type { AccessLinkResult } from "@/types/domain";
 
 const USERNAME_RE = /^[a-z0-9._-]{3,30}$/;
 
@@ -29,8 +30,7 @@ export function CreateEmployeeForm({ open, onClose }: { open: boolean; onClose: 
   const [username, setUsername] = useState("");
   const [usernameTouched, setUsernameTouched] = useState(false);
   const [phone, setPhone] = useState("");
-  const [result, setResult] = useState<CreateEmployeeResult | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [result, setResult] = useState<AccessLinkResult | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -39,7 +39,6 @@ export function CreateEmployeeForm({ open, onClose }: { open: boolean; onClose: 
     setUsernameTouched(false);
     setPhone("");
     setResult(null);
-    setCopied(false);
   }, [open]);
 
   // Auto-fill the username until the admin edits it manually.
@@ -65,18 +64,6 @@ export function CreateEmployeeForm({ open, onClose }: { open: boolean; onClose: 
       toast.success("Funcionária criada! Envie o link de ativação.");
     } catch (error) {
       toast.error(friendlyError(error));
-    }
-  }
-
-  async function copyLink() {
-    if (!result) return;
-    try {
-      await navigator.clipboard.writeText(result.setup_url);
-      setCopied(true);
-      toast.success("Link copiado.");
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Não foi possível copiar o link.");
     }
   }
 
@@ -119,31 +106,10 @@ export function CreateEmployeeForm({ open, onClose }: { open: boolean; onClose: 
       }
     >
       {result ? (
-        <div className="space-y-4">
-          <a
-            href={result.wa_link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-success px-4 py-3 font-medium text-white transition hover:brightness-95 active:scale-[0.98]"
-          >
-            <MessageCircle className="h-5 w-5" />
-            Enviar pelo WhatsApp
-          </a>
-
-          <div>
-            <p className="label">Ou copie o link</p>
-            <div className="flex gap-2">
-              <input readOnly value={result.setup_url} className="field flex-1 text-xs" />
-              <Button variant="secondary" size="icon" onClick={() => void copyLink()} aria-label="Copiar link">
-                {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
-              </Button>
-            </div>
-          </div>
-
-          <p className="rounded-lg bg-surface-2 p-3 text-xs text-muted">
-            A conta fica <strong>pendente</strong> até ela criar a senha pelo link.
-          </p>
-        </div>
+        <AccessLinkPanel
+          result={result}
+          note="A conta fica pendente até ela criar a senha pelo link. O link expira em 72 horas."
+        />
       ) : (
         <form onSubmit={onSubmit} className="space-y-4">
           <Input

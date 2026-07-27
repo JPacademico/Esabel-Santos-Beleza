@@ -51,11 +51,6 @@ export function cancellationMessage(o: {
   );
 }
 
-export function onboardingMessage(o: { name: string; setupUrl: string }): string {
-  const firstName = o.name.trim().split(/\s+/)[0] ?? o.name;
-  return (
-    `Olá ${firstName}! 💇 Bem-vindo(a) à equipe *Esabel Santos Beleza*.\n\n` +
-    `Ative sua conta e crie sua senha no link abaixo:\n${o.setupUrl}\n\n` +
-    `⚠️ O link é pessoal e expira em 72 horas.`
-  );
-}
+// Note: onboarding and password-reset WhatsApp messages are built server-side
+// (create-employee / reset-employee-password) because those functions own the
+// one-time token. Keeping a copy here would silently drift out of sync.

@@ -14,6 +14,8 @@ const MIN_PASSWORD = 8;
 export function ActivatePage() {
   const [params] = useSearchParams();
   const token = params.get("token") ?? "";
+  // reset-employee-password appends &reset=1 so the copy matches the situation.
+  const isReset = params.get("reset") === "1";
   const navigate = useNavigate();
 
   const [password, setPassword] = useState("");
@@ -32,7 +34,7 @@ export function ActivatePage() {
     try {
       await activateAccount(token, password);
       setDone(true);
-      toast.success("Conta ativada com sucesso! 🎉");
+      toast.success(isReset ? "Senha alterada com sucesso! 🎉" : "Conta ativada com sucesso! 🎉");
       setTimeout(() => navigate("/login", { replace: true }), 2200);
     } catch (error) {
       toast.error(friendlyError(error));
@@ -72,7 +74,8 @@ export function ActivatePage() {
             <CheckCircle2 className="mb-4 h-14 w-14 text-success" />
             <h1 className="text-lg font-semibold text-text">Tudo pronto!</h1>
             <p className="mt-2 text-sm text-muted">
-              Sua senha foi criada. Redirecionando para o login…
+              {isReset ? "Sua nova senha está ativa." : "Sua senha foi criada."} Redirecionando para
+              o login…
             </p>
           </motion.div>
         ) : (
@@ -81,9 +84,13 @@ export function ActivatePage() {
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent text-accent-fg shadow-float">
                 <Sparkles className="h-8 w-8" />
               </div>
-              <h1 className="text-xl font-semibold text-text">Ative sua conta</h1>
+              <h1 className="text-xl font-semibold text-text">
+                {isReset ? "Criar nova senha" : "Ative sua conta"}
+              </h1>
               <p className="mt-1 text-sm text-muted">
-                Crie uma senha para acessar a agenda do salão.
+                {isReset
+                  ? "Defina uma nova senha para acessar a agenda."
+                  : "Crie uma senha para acessar a agenda do salão."}
               </p>
             </div>
 
@@ -114,7 +121,7 @@ export function ActivatePage() {
                 disabled={submitting}
               />
               <Button type="submit" fullWidth size="lg" loading={submitting} disabled={!valid}>
-                Ativar conta
+                {isReset ? "Salvar nova senha" : "Ativar conta"}
               </Button>
             </form>
           </>
