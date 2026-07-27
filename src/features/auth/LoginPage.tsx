@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, KeyRound, Scissors, User } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { ThemeToggle } from "@/components/ThemeToggle";

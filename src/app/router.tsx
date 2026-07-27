@@ -1,17 +1,40 @@
+import { lazy, Suspense } from "react";
 import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
-import { AdminRoute, ProtectedRoute } from "@/components/guards";
+import { AdminRoute, ProtectedRoute, SplashScreen } from "@/components/guards";
 import { AppShell } from "@/components/layout/AppShell";
 import { LoginPage } from "@/features/auth/LoginPage";
-import { ActivatePage } from "@/features/auth/ActivatePage";
 import { AgendaPage } from "@/features/appointments/AgendaPage";
-import { ClientsPage } from "@/features/clients/ClientsPage";
-import { EmployeesPage } from "@/features/admin/EmployeesPage";
-import { SettingsPage } from "@/features/settings/SettingsPage";
+
+/**
+ * Code splitting: Login and Agenda are the two entry points, so they stay in
+ * the main bundle. Everything else loads on first visit and is then precached
+ * by the service worker, keeping the initial download small on mobile data.
+ */
+const ActivatePage = lazy(() =>
+  import("@/features/auth/ActivatePage").then((m) => ({ default: m.ActivatePage })),
+);
+const ClientsPage = lazy(() =>
+  import("@/features/clients/ClientsPage").then((m) => ({ default: m.ClientsPage })),
+);
+const EmployeesPage = lazy(() =>
+  import("@/features/admin/EmployeesPage").then((m) => ({ default: m.EmployeesPage })),
+);
+const SettingsPage = lazy(() =>
+  import("@/features/settings/SettingsPage").then((m) => ({ default: m.SettingsPage })),
+);
 
 const router = createBrowserRouter(
   [
     { path: "/login", element: <LoginPage /> },
-    { path: "/activate", element: <ActivatePage /> },
+    {
+      path: "/activate",
+      // Outside AppShell, so it needs its own Suspense boundary.
+      element: (
+        <Suspense fallback={<SplashScreen />}>
+          <ActivatePage />
+        </Suspense>
+      ),
+    },
     {
       element: (
         <ProtectedRoute>

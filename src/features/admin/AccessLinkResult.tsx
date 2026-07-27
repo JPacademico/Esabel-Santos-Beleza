@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, Copy, MessageCircle } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/Button";
 import type { AccessLinkResult as AccessLinkResultData } from "@/types/domain";
 

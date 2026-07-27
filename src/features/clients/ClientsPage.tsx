@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Cake, MessageCircle, Pencil, Phone, Plus, Search, Trash2, Users } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { EmptyState, Skeleton } from "@/components/ui/Feedback";
@@ -47,11 +47,13 @@ export function ClientsPage() {
         </div>
         <Button
           size="icon"
+          pulse
           onClick={() => {
             setEditing(null);
             setFormOpen(true);
           }}
           aria-label="Nova cliente"
+          title="Nova cliente"
           className="mt-0 h-11 w-11 shrink-0"
         >
           <Plus className="h-5 w-5" />
@@ -76,6 +78,7 @@ export function ClientsPage() {
           action={
             !search ? (
               <Button
+                pulse
                 onClick={() => {
                   setEditing(null);
                   setFormOpen(true);

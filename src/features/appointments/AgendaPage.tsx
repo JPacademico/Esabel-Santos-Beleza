@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { CalendarPlus, CalendarX2, Filter, Plus } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/Button";
 import { AppointmentSkeleton, EmptyState } from "@/components/ui/Feedback";
 import { useAuthStore } from "@/stores/authStore";
@@ -44,11 +44,18 @@ export function AgendaPage() {
     return scope === "mine" ? list.filter((a) => a.employee_id === userId) : list;
   }, [appointments, scope, userId]);
 
+  // Status is derived once here so cards receive a stable string rather than
+  // the ticking clock — see the note in AppointmentCard.
+  const rows = useMemo(
+    () => visible.map((a) => ({ appointment: a, status: computeAppointmentStatus(a, now) })),
+    [visible, now],
+  );
+
   const summary = useMemo(() => {
     const counts = { scheduled: 0, concluded: 0, canceled: 0 };
-    for (const appointment of visible) counts[computeAppointmentStatus(appointment, now)]++;
+    for (const row of rows) counts[row.status]++;
     return counts;
-  }, [visible, now]);
+  }, [rows]);
 
   function goToDay(next: Date) {
     navigate(`/agenda/${toDateParam(next)}`);
@@ -64,17 +71,26 @@ export function AgendaPage() {
     setFormOpen(true);
   }
 
-  async function handleDelete(appointment: AppointmentWithEmployee) {
-    if (!window.confirm(`Excluir definitivamente o agendamento de ${appointment.client_name}?`)) {
-      return;
-    }
-    try {
-      await deleteMutation.mutateAsync(appointment.id);
-      toast.success("Agendamento excluído.");
-    } catch (err) {
-      toast.error(friendlyError(err));
-    }
-  }
+  // Stable identities keep the memoised cards from re-rendering.
+  const handleEdit = useCallback((appointment: AppointmentWithEmployee) => {
+    setEditing(appointment);
+    setFormOpen(true);
+  }, []);
+
+  const handleDelete = useCallback(
+    async (appointment: AppointmentWithEmployee) => {
+      if (!window.confirm(`Excluir definitivamente o agendamento de ${appointment.client_name}?`)) {
+        return;
+      }
+      try {
+        await deleteMutation.mutateAsync(appointment.id);
+        toast.success("Agendamento excluído.");
+      } catch (err) {
+        toast.error(friendlyError(err));
+      }
+    },
+    [deleteMutation],
+  );
 
   return (
     <div>
@@ -149,7 +165,7 @@ export function AgendaPage() {
           }
           action={
             isWithinHorizon(day) ? (
-              <Button onClick={openCreate}>
+              <Button onClick={openCreate} pulse>
                 <Plus className="h-4 w-4" />
                 Novo agendamento
               </Button>
@@ -159,17 +175,14 @@ export function AgendaPage() {
       ) : (
         <motion.div layout className="space-y-3">
           <AnimatePresence mode="popLayout">
-            {visible.map((appointment) => (
+            {rows.map(({ appointment, status }) => (
               <AppointmentCard
                 key={appointment.id}
                 appointment={appointment}
-                now={now}
-                onEdit={(a) => {
-                  setEditing(a);
-                  setFormOpen(true);
-                }}
+                status={status}
+                onEdit={handleEdit}
                 onCancel={setCanceling}
-                onDelete={(a) => void handleDelete(a)}
+                onDelete={handleDelete}
               />
             ))}
           </AnimatePresence>
@@ -178,16 +191,14 @@ export function AgendaPage() {
 
       {/* Floating create button (sits above the bottom nav) */}
       {isWithinHorizon(day) && visible.length > 0 && (
-        <motion.button
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 380, damping: 25 }}
+        <button
           onClick={openCreate}
           aria-label="Novo agendamento"
-          className="fixed bottom-24 right-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-accent-fg shadow-float transition active:scale-95"
+          title="Novo agendamento"
+          className="fab fixed bottom-24 right-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-accent-fg shadow-float active:scale-95"
         >
           <Plus className="h-6 w-6" />
-        </motion.button>
+        </button>
       )}
 
       <AppointmentForm

@@ -13,6 +13,12 @@
     <meta name="theme-color" content="#b76e79" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#14100f" media="(prefers-color-scheme: dark)" />
 
+    <!--
+      Warm up the Supabase connection (DNS + TLS) before the first query.
+      Vite substitutes %VITE_*% placeholders in index.html at build time.
+    -->
+    <link rel="preconnect" href="%VITE_SUPABASE_URL%" crossorigin />
+
     <!-- iOS PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

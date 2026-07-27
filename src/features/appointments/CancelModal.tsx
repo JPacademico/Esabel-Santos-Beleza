@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, MessageCircle } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Field";

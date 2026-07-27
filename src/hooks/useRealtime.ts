@@ -20,10 +20,13 @@ export function useRealtime(enabled: boolean) {
     const channel = supabase
       .channel("esb-live")
       .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, () => {
-        qc.invalidateQueries({ queryKey: queryKeys.appointments });
+        // `refetchType: "active"` marks every cached day/month stale but only
+        // re-fetches what is currently on screen; other days refresh lazily
+        // when revisited instead of firing a burst of requests.
+        qc.invalidateQueries({ queryKey: queryKeys.appointments, refetchType: "active" });
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "clients" }, () => {
-        qc.invalidateQueries({ queryKey: queryKeys.clients });
+        qc.invalidateQueries({ queryKey: queryKeys.clients, refetchType: "active" });
       })
       .subscribe();
 

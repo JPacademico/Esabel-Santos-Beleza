@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Crown, KeyRound, Plus, ShieldCheck, UserMinus, UsersRound } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Field";
 import { Badge, EmptyState, Skeleton } from "@/components/ui/Feedback";
@@ -62,7 +62,7 @@ export function EmployeesPage() {
             {employees?.length ?? 0} {employees?.length === 1 ? "pessoa" : "pessoas"}
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button pulse onClick={() => setCreateOpen(true)} title="Nova funcionária">
           <Plus className="h-4 w-4" />
           Nova
         </Button>
@@ -80,7 +80,7 @@ export function EmployeesPage() {
           title="Nenhuma funcionária"
           description="Crie a primeira conta para a equipe."
           action={
-            <Button onClick={() => setCreateOpen(true)}>
+            <Button pulse onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4" />
               Nova funcionária
             </Button>

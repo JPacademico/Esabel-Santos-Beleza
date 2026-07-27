@@ -1,7 +1,8 @@
+import { memo } from "react";
 import { motion } from "framer-motion";
 import { Ban, Clock, MessageCircle, Pencil, Phone, Scissors, Trash2, UserRound } from "lucide-react";
 import { StatusBadge } from "@/components/ui/Feedback";
-import { computeAppointmentStatus } from "@/lib/status";
+import type { DisplayStatus } from "@/lib/status";
 import { formatTime } from "@/lib/dates";
 import { formatBRPhone, openWhatsApp } from "@/lib/whatsapp";
 import { cn } from "@/lib/cn";
@@ -10,17 +11,21 @@ import type { AppointmentWithEmployee } from "@/types/domain";
 
 interface Props {
   appointment: AppointmentWithEmployee;
-  now: Date;
+  /**
+   * Computed by the parent rather than derived from a `now` prop: passing the
+   * clock would re-render every card each minute, whereas the status string
+   * only changes when an appointment actually becomes "Concluído".
+   */
+  status: DisplayStatus;
   onEdit: (appointment: AppointmentWithEmployee) => void;
   onCancel: (appointment: AppointmentWithEmployee) => void;
   onDelete: (appointment: AppointmentWithEmployee) => void;
 }
 
-export function AppointmentCard({ appointment, now, onEdit, onCancel, onDelete }: Props) {
+function AppointmentCardBase({ appointment, status, onEdit, onCancel, onDelete }: Props) {
   const isAdmin = useAuthStore((s) => s.isAdmin);
   const userId = useAuthStore((s) => s.session?.user.id);
 
-  const status = computeAppointmentStatus(appointment, now);
   // Mirrors the RLS mutation rule: own rows, or admin for any.
   const canMutate = isAdmin || appointment.employee_id === userId;
   const isCanceled = status === "canceled";
@@ -151,3 +156,10 @@ export function AppointmentCard({ appointment, now, onEdit, onCancel, onDelete }
     </motion.article>
   );
 }
+
+/**
+ * Memoised: with stable callbacks from the parent, a day's worth of cards
+ * re-render only when their own data or status changes — not on every
+ * clock tick or sibling update.
+ */
+export const AppointmentCard = memo(AppointmentCardBase);

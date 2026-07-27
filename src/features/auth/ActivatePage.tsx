@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { CheckCircle2, KeyRound, ShieldAlert, Sparkles } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { ThemeToggle } from "@/components/ThemeToggle";

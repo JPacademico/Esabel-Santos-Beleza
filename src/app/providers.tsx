@@ -69,18 +69,18 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         {children}
+        {/*
+          `unstyled` hands full control to our own markup in lib/toast.tsx —
+          without it sonner layers its default card behind the branded one.
+        */}
         <Toaster
           position="top-center"
           theme={theme}
-          richColors
-          closeButton
           duration={3500}
-          toastOptions={{
-            style: {
-              borderRadius: "var(--radius)",
-              fontFamily: "inherit",
-            },
-          }}
+          gap={10}
+          offset={14}
+          visibleToasts={3}
+          toastOptions={{ unstyled: true, classNames: { toast: "w-full" } }}
         />
       </AuthProvider>
     </QueryClientProvider>

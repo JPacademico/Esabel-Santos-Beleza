@@ -25,10 +25,22 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: Size;
   loading?: boolean;
   fullWidth?: boolean;
+  /** Soft attention ring for primary calls-to-action. Pauses on hover/focus. */
+  pulse?: boolean;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = "primary", size = "md", loading, fullWidth, className, children, disabled, ...rest },
+  {
+    variant = "primary",
+    size = "md",
+    loading,
+    fullWidth,
+    pulse,
+    className,
+    children,
+    disabled,
+    ...rest
+  },
   ref,
 ) {
   return (
@@ -42,6 +54,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         VARIANTS[variant],
         SIZES[size],
         fullWidth && "w-full justify-center",
+        pulse && !disabled && !loading && "cta-pulse",
         className,
       )}
       {...rest}

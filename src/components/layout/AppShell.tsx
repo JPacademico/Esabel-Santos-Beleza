@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { CalendarDays, LogOut, Scissors, Settings, Users, UsersRound } from "lucide-react";
+import { PageFallback } from "@/components/ui/Feedback";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuthStore } from "@/stores/authStore";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -69,7 +71,9 @@ export function AppShell() {
           replays per navigation, and the base style stays fully opaque.
         */}
         <div key={location.pathname} className="page-enter">
-          <Outlet />
+          <Suspense fallback={<PageFallback />}>
+            <Outlet />
+          </Suspense>
         </div>
       </main>
 

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { CalendarClock, Phone, Scissors, UserRound } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Field";

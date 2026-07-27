@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { KeyRound } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { friendlyError } from "@/lib/cn";

@@ -60,6 +60,18 @@ export function Skeleton({ className }: { className?: string }) {
   );
 }
 
+/** Suspense fallback while a lazily-loaded route chunk downloads. */
+export function PageFallback() {
+  return (
+    <div className="space-y-3" aria-busy="true" aria-label="Carregando">
+      <Skeleton className="h-11 w-full" />
+      <Skeleton className="h-[68px] w-full" />
+      <Skeleton className="h-[68px] w-full" />
+      <Skeleton className="h-[68px] w-full" />
+    </div>
+  );
+}
+
 export function AppointmentSkeleton() {
   return (
     <div className="card space-y-3 p-4">
