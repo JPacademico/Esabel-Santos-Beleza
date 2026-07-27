@@ -23,11 +23,29 @@ export function waLink(phone: string | null | undefined, message: string): strin
   return `https://wa.me/${normalizeBRPhone(phone)}?text=${encodeURIComponent(message)}`;
 }
 
-/** Opens WhatsApp in a new tab/app. Returns false if there is no usable number. */
+/**
+ * Tries to open WhatsApp. Returns whether a window was actually opened.
+ *
+ * Two things matter here:
+ *  - `noopener` is NOT passed in the features string: with it the browser
+ *    returns null even on success, making a blocked popup indistinguishable
+ *    from a successful one. We sever `opener` manually instead.
+ *  - Browsers (iOS Safari especially) block this unless it runs synchronously
+ *    inside a user gesture. After an `await` it will usually fail, so callers
+ *    must always offer a real <a href> fallback rather than assume success.
+ */
 export function openWhatsApp(phone: string | null | undefined, message: string): boolean {
   const number = normalizeBRPhone(phone);
   if (!number) return false;
-  window.open(waLink(number, message), "_blank", "noopener,noreferrer");
+
+  const win = window.open(waLink(number, message), "_blank");
+  if (!win) return false;
+
+  try {
+    win.opener = null;
+  } catch {
+    // Cross-origin navigation already happened; nothing to sever.
+  }
   return true;
 }
 

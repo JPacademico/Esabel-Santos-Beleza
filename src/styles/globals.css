@@ -271,6 +271,106 @@
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Login hero: floating hairstyle mark.
+   Transform-only, and every element's resting state is its visible state, so
+   a frozen animation leaves a correct (just motionless) illustration.
+--------------------------------------------------------------------------- */
+.hero-mark {
+  width: min(58vw, 210px);
+  margin-inline: auto;
+  filter: drop-shadow(0 14px 26px rgb(var(--accent) / 0.22));
+}
+
+.hero-mark svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.hero-float {
+  animation: hero-float 6s ease-in-out infinite alternate;
+  transform-origin: 120px 120px;
+}
+
+.hero-halo {
+  animation: hero-halo 7.5s ease-in-out infinite alternate;
+  transform-origin: 120px 118px;
+}
+
+/* Odd, mutually indivisible periods keep the two strands from ever syncing up. */
+.hero-strand {
+  transform-origin: top center;
+}
+.hero-strand--a {
+  animation: hero-sway-a 5.5s ease-in-out infinite alternate;
+  transform-origin: 70px 96px;
+}
+.hero-strand--b {
+  animation: hero-sway-b 6.7s ease-in-out infinite alternate;
+  transform-origin: 170px 96px;
+}
+
+.hero-sparkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: hero-sparkle 3.4s ease-in-out infinite alternate;
+}
+.hero-sparkle--2 {
+  animation-duration: 4.3s;
+  animation-delay: -1.2s;
+}
+.hero-sparkle--3 {
+  animation-duration: 2.9s;
+  animation-delay: -2.1s;
+}
+
+@keyframes hero-float {
+  from {
+    transform: translateY(-6px) rotate(-1.1deg);
+  }
+  to {
+    transform: translateY(7px) rotate(1.1deg);
+  }
+}
+
+@keyframes hero-halo {
+  from {
+    transform: scale(0.9);
+  }
+  to {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes hero-sway-a {
+  from {
+    transform: rotate(-3.5deg);
+  }
+  to {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes hero-sway-b {
+  from {
+    transform: rotate(3.5deg);
+  }
+  to {
+    transform: rotate(-3deg);
+  }
+}
+
+@keyframes hero-sparkle {
+  from {
+    transform: scale(0.55) rotate(-18deg);
+  }
+  to {
+    transform: scale(1.15) rotate(18deg);
+  }
+}
+
 @keyframes cta-pulse {
   0% {
     box-shadow: 0 0 0 0 rgb(var(--accent) / 0.42);

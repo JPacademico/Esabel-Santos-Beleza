@@ -5,6 +5,7 @@ import { Eye, EyeOff, KeyRound, Scissors, User } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
+import { HairstyleMark } from "@/components/HairstyleMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuthStore } from "@/stores/authStore";
 import { useLogin } from "./hooks";
@@ -58,17 +59,13 @@ export function LoginPage() {
         transition={{ duration: 0.35 }}
         className="relative mx-auto w-full max-w-sm"
       >
-        <div className="mb-8 flex flex-col items-center text-center">
-          <motion.div
-            initial={{ scale: 0.8, rotate: -12 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 260, damping: 18 }}
-            className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent text-accent-fg shadow-float"
-          >
-            <Scissors className="h-8 w-8" />
-          </motion.div>
-          <h1 className="text-xl font-semibold text-text">Esabel Santos Beleza</h1>
-          <p className="mt-1 text-sm text-muted">Agenda interna da equipe</p>
+        <div className="mb-7 flex flex-col items-center text-center">
+          <HairstyleMark />
+          <h1 className="mt-1 text-xl font-semibold text-text">Esabel Santos Beleza</h1>
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
+            <Scissors className="h-3.5 w-3.5 text-accent" />
+            Agenda interna da equipe
+          </p>
         </div>
 
         <form onSubmit={onSubmit} className="card space-y-4 p-5">
