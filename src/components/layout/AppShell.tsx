@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { CalendarDays, LogOut, Scissors, Settings, Users, UsersRound } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuthStore } from "@/stores/authStore";
@@ -53,17 +53,24 @@ export function AppShell() {
       </header>
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-28 pt-4">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.18 }}
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
+        {/*
+          Page transitions are CSS-only and visibility never depends on them.
+
+          Previously this was <AnimatePresence mode="wait"> around a
+          motion.div with `initial={{ opacity: 0 }}`. Two problems:
+          1. <Outlet /> swaps in the new page the moment the URL changes, so
+             the "exiting" child no longer holds the old page and its exit
+             can fail to resolve — with mode="wait" the incoming page then
+             never mounts.
+          2. Any JS animation that starts at opacity 0 and doesn't finish
+             leaves the page permanently invisible (blank tab).
+
+          Keying by pathname remounts the subtree so the CSS animation
+          replays per navigation, and the base style stays fully opaque.
+        */}
+        <div key={location.pathname} className="page-enter">
+          <Outlet />
+        </div>
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 backdrop-blur-md pb-safe">

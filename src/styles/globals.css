@@ -90,6 +90,28 @@
   .pb-safe {
     padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
   }
+
+  /*
+    Page enter transition — transform only, deliberately never opacity.
+
+    Page content must not be able to end up invisible. An animation that
+    starts at opacity 0 leaves the page blank whenever it fails to run to
+    completion (throttled/background tab, interrupted navigation, a stuck
+    AnimatePresence exit). Animating only `transform` means the worst case
+    is content sitting 8px low — always readable, never a blank tab.
+  */
+  .page-enter {
+    animation: page-enter 0.18s ease-out;
+  }
+}
+
+@keyframes page-enter {
+  from {
+    transform: translateY(8px);
+  }
+  to {
+    transform: none;
+  }
 }
 
 /* Thin, unobtrusive scrollbars. */
