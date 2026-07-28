@@ -7,7 +7,7 @@ import type { AccessLinkResult, NewEmployeeInput, Profile } from "@/types/domain
 /** Full roster (including pending/inactive) for the admin page. */
 export function useEmployees() {
   return useQuery({
-    queryKey: queryKeys.employees,
+    queryKey: queryKeys.employeeRoster,
     queryFn: async (): Promise<Profile[]> => {
       const { data, error } = await supabase
         .from("profiles")

@@ -50,15 +50,23 @@ export function useAppointmentsByMonth(month: Date) {
   });
 }
 
-/** Active employees, for the admin's "assign to" selector. */
-export function useEmployeeOptions() {
+/**
+ * Assignable staff for the admin's "Profissional" selector.
+ *
+ * Includes `pending` accounts on purpose: an employee who has been invited but
+ * hasn't set her password yet still works at the salon and must be bookable —
+ * the owner is replacing a paper agenda, not gating on logins. Only `inactive`
+ * (deactivated) accounts are excluded.
+ */
+export function useEmployeeOptions(enabled = true) {
   return useQuery({
-    queryKey: queryKeys.employees,
+    enabled,
+    queryKey: queryKeys.employeeOptions,
     queryFn: async (): Promise<Pick<Profile, "id" | "full_name" | "role" | "status">[]> => {
       const { data, error } = await supabase
         .from("profiles")
         .select("id, full_name, role, status")
-        .eq("status", "active")
+        .neq("status", "inactive")
         .order("full_name");
       if (error) throw error;
       return data ?? [];

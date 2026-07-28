@@ -44,7 +44,9 @@ export function AppointmentForm({ open, onClose, appointment, defaultDate }: Pro
   const isAdmin = useAuthStore((s) => s.isAdmin);
   const userId = useAuthStore((s) => s.session?.user.id ?? "");
 
-  const { data: employees } = useEmployeeOptions();
+  // Only the owner sees a "Profissional" selector; employees always book for
+  // themselves, so there's no reason to fetch the roster on their devices.
+  const { data: employees } = useEmployeeOptions(isAdmin);
   const createMutation = useCreateAppointment();
   const updateMutation = useUpdateAppointment();
   const pending = createMutation.isPending || updateMutation.isPending;
