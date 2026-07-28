@@ -41,7 +41,7 @@ Open http://localhost:5173 and sign in with the owner account you bootstrapped
 | `npm run build` | Type-check then production build to `dist/` |
 | `npm run preview` | Serve the production build locally |
 | `npm run lint` | `tsc --noEmit` type-check |
-| `npm run icons` | Regenerate PWA PNG icons from `public/icons/favicon.svg` |
+| `npm run icons` | Regenerate favicon/PWA PNG icons from `branding/logo.jpg` |
 | `npm run types` | Regenerate `src/types/database.types.ts` from the linked Supabase project |
 
 ---

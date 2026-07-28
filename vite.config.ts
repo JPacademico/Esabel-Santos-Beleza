@@ -32,7 +32,11 @@ export default defineConfig({
       filename: "sw.ts",
       registerType: "autoUpdate",
       injectRegister: null, // registered manually in main.tsx
-      includeAssets: ["icons/apple-touch-icon-180.png", "icons/favicon.svg"],
+      includeAssets: [
+        "icons/apple-touch-icon-180.png",
+        "icons/favicon-32.png",
+        "icons/favicon-16.png",
+      ],
       injectManifest: {
         globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
       },
