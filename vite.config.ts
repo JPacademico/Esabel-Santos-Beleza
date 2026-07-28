@@ -34,6 +34,7 @@ export default defineConfig({
       injectRegister: null, // registered manually in main.tsx
       includeAssets: [
         "icons/apple-touch-icon-180.png",
+        "icons/favicon-48.png",
         "icons/favicon-32.png",
         "icons/favicon-16.png",
       ],

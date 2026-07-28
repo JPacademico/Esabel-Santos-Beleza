@@ -23,9 +23,15 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="ESB Agenda" />
-    <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png?v=2" />
+    <!--
+      Tab icon is the lock mark, not the full wordmark: the script lettering is
+      unreadable at these sizes. ?v=2 busts the browser's favicon cache, which
+      is held separately from the normal HTTP cache and is very sticky.
+    -->
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png?v=2" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png?v=2" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png?v=2" />
 
     <script>
       // Apply the stored theme before paint to avoid a flash of the wrong scheme.
