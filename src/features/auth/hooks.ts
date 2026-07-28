@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase, usernameToEmail } from "@/lib/supabase";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { disablePush } from "@/lib/push";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -29,21 +30,5 @@ export function useLogout() {
 
 /** Sets the password for a pending employee using their one-time setup token. */
 export async function activateAccount(token: string, password: string) {
-  const { data, error } = await supabase.functions.invoke("activate-employee", {
-    body: { token, password },
-  });
-  if (error) {
-    // Edge Function errors carry the useful message in the response body.
-    const ctx = (error as { context?: Response }).context;
-    if (ctx && typeof ctx.json === "function") {
-      try {
-        const body = await ctx.json();
-        throw new Error(body?.error ?? error.message);
-      } catch (parsed) {
-        if (parsed instanceof Error && parsed.message !== error.message) throw parsed;
-      }
-    }
-    throw error;
-  }
-  return data as { ok: true };
+  return invokeFunction<{ ok: true }>("activate-employee", { token, password });
 }

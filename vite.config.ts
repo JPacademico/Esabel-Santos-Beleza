@@ -7,7 +7,9 @@ export default defineConfig({
   resolve: {
     alias: { "@": path.resolve(__dirname, "src") },
   },
-  server: { port: 5173 },
+  // Honour an assigned PORT so the dev server doesn't collide with whatever
+  // else is already on 5173.
+  server: { port: Number(process.env.PORT) || 5173 },
   build: {
     // Split heavy vendors so a repeat visit on mobile data only refetches app code.
     rollupOptions: {

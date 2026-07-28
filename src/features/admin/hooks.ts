@@ -1,27 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { queryKeys } from "@/lib/queryClient";
 import type { AccessLinkResult, NewEmployeeInput, Profile } from "@/types/domain";
-
-/** Edge Functions return their message in the response body, not error.message. */
-async function invokeFunction<T>(name: string, body: object): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(name, {
-    body: body as Record<string, unknown>,
-  });
-  if (error) {
-    const ctx = (error as { context?: Response }).context;
-    if (ctx && typeof ctx.json === "function") {
-      try {
-        const parsed = await ctx.json();
-        if (parsed?.error) throw new Error(parsed.error);
-      } catch (e) {
-        if (e instanceof Error && e.message !== error.message) throw e;
-      }
-    }
-    throw error;
-  }
-  return data as T;
-}
 
 /** Full roster (including pending/inactive) for the admin page. */
 export function useEmployees() {
