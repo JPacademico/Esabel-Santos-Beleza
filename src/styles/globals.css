@@ -103,11 +103,36 @@
   .page-enter {
     animation: page-enter 0.18s ease-out;
   }
+
+  /*
+    Agenda list swap (Agendados / Concluídos / Cancelados).
+
+    ONE animation for the whole list instead of one per card. Previously the
+    entire set exited and entered at once under AnimatePresence, so a tab
+    change ran N springs plus a layout reconciliation — the bouncy, glitchy
+    feel. Moving the transition to the container makes a tab switch a single
+    cheap, GPU-composited transform.
+
+    Transform only, same reasoning as .page-enter above: a list that fails to
+    finish animating must still be readable, never invisible.
+  */
+  .list-swap {
+    animation: list-swap 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
 }
 
 @keyframes page-enter {
   from {
     transform: translateY(8px);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes list-swap {
+  from {
+    transform: translateY(6px);
   }
   to {
     transform: none;

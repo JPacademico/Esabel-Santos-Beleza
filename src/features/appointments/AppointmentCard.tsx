@@ -63,11 +63,22 @@ function AppointmentCardBase({
 
   return (
     <motion.article
-      layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.97 }}
-      transition={{ type: "spring", stiffness: 320, damping: 30 }}
+      /*
+        `layout="position"` (not full `layout`) so siblings glide up when a card
+        is removed without the card's own box being scale-distorted mid-flight.
+
+        No `initial`/`animate`: layout animations are driven THROUGH `transform`,
+        so animating `y` here fought the layout engine for the same property —
+        a real source of the jitter. Entrance is handled one level up by the
+        container's .list-swap, which costs one animation instead of N.
+
+        The tween replaces a spring at stiffness 320 / damping 30. Critical
+        damping there is 2·√320 ≈ 35.8, so it was underdamped and visibly
+        overshot — that was the bounce.
+      */
+      layout="position"
+      exit={{ opacity: 0, scale: 0.98 }}
+      transition={{ duration: 0.18, ease: [0.22, 0.61, 0.36, 1] }}
       className={cn(
         "card overflow-hidden p-4 transition",
         isCanceled && "opacity-70",

@@ -226,8 +226,14 @@ export function AgendaPage() {
           }
         />
       ) : (
-        <motion.div layout className="space-y-3">
-          <AnimatePresence mode="popLayout">
+        /*
+          Keyed by tab so a status change is a clean remount rather than a
+          simultaneous exit+enter of every card, and `initial={false}` keeps
+          that remount from firing an entrance animation per card. The single
+          .list-swap transform on the container carries the transition instead.
+        */
+        <div key={statusTab} className="list-swap space-y-3">
+          <AnimatePresence initial={false} mode="popLayout">
             {shown.map(({ appointment, status }) => (
               <AppointmentCard
                 key={appointment.id}
@@ -240,7 +246,7 @@ export function AgendaPage() {
               />
             ))}
           </AnimatePresence>
-        </motion.div>
+        </div>
       )}
 
       {/* Floating create button (sits above the bottom nav) */}
