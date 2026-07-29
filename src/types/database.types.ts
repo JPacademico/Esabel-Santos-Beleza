@@ -91,6 +91,8 @@ export type Database = {
           status: Database["public"]["Enums"]["appointment_status"];
           cancellation_reason: string | null;
           canceled_at: string | null;
+          /** Set only while status is 'concluded'; cleared by a DB trigger otherwise. */
+          concluded_at: string | null;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -109,6 +111,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["appointment_status"];
           cancellation_reason?: string | null;
           canceled_at?: string | null;
+          concluded_at?: string | null;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -126,6 +129,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["appointment_status"];
           cancellation_reason?: string | null;
           canceled_at?: string | null;
+          concluded_at?: string | null;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -170,7 +174,8 @@ export type Database = {
     Enums: {
       user_role: "super_admin" | "employee";
       account_status: "pending" | "active" | "inactive";
-      appointment_status: "scheduled" | "canceled";
+      /** All three are stored; completion is an explicit action, not inferred from time. */
+      appointment_status: "scheduled" | "concluded" | "canceled";
     };
     CompositeTypes: Record<never, never>;
   };

@@ -8,7 +8,11 @@ import { AppointmentSkeleton, EmptyState } from "@/components/ui/Feedback";
 import { useAuthStore } from "@/stores/authStore";
 import { useUIStore } from "@/stores/uiStore";
 import { useNowTick } from "@/hooks/useNowTick";
-import { computeAppointmentStatus, type DisplayStatus } from "@/lib/status";
+import {
+  computeAppointmentStatus,
+  isAwaitingCompletion,
+  type DisplayStatus,
+} from "@/lib/status";
 import { fromDateParam, isWithinHorizon, startOfMonth, toDateParam } from "@/lib/dates";
 import { friendlyError, cn } from "@/lib/cn";
 import { isAssignedTo } from "@/lib/services";
@@ -18,7 +22,13 @@ import { AppointmentCard } from "./AppointmentCard";
 import { AppointmentForm } from "./AppointmentForm";
 import { CancelModal } from "./CancelModal";
 import { StatusTabs, STATUS_ORDER, STATUS_TAB_LABEL } from "./StatusTabs";
-import { useAppointmentsByDay, useDeleteAppointment, useEmployeeNames } from "./hooks";
+import {
+  useAppointmentsByDay,
+  useConcludeAppointment,
+  useDeleteAppointment,
+  useEmployeeNames,
+  useReopenAppointment,
+} from "./hooks";
 import type { AppointmentWithEmployee } from "@/types/domain";
 
 export function AgendaPage() {
@@ -52,6 +62,8 @@ export function AgendaPage() {
   // Fetched once here rather than per card, so a day's worth of cards share it.
   const { data: staffNames } = useEmployeeNames();
   const deleteMutation = useDeleteAppointment();
+  const concludeMutation = useConcludeAppointment();
+  const reopenMutation = useReopenAppointment();
 
   const visible = useMemo(() => {
     const list = appointments ?? [];
@@ -61,10 +73,15 @@ export function AgendaPage() {
     return list.filter((a) => isAssignedTo(a, userId));
   }, [appointments, scope, userId]);
 
-  // Status is derived once here so cards receive a stable string rather than
-  // the ticking clock — see the note in AppointmentCard.
+  // Status and the "awaiting confirmation" flag are derived once here so cards
+  // receive stable primitives rather than the ticking clock — see AppointmentCard.
   const rows = useMemo(
-    () => visible.map((a) => ({ appointment: a, status: computeAppointmentStatus(a, now) })),
+    () =>
+      visible.map((a) => ({
+        appointment: a,
+        status: computeAppointmentStatus(a),
+        awaiting: isAwaitingCompletion(a, now),
+      })),
     [visible, now],
   );
 
@@ -73,6 +90,10 @@ export function AgendaPage() {
     for (const row of rows) tally[row.status]++;
     return tally;
   }, [rows]);
+
+  // Surfaced next to the day total: completion is a manual step now, so the one
+  // thing worth nagging about is appointments whose time passed unmarked.
+  const awaitingCount = useMemo(() => rows.filter((r) => r.awaiting).length, [rows]);
 
   // The list actually rendered: one status at a time, so a day's finished and
   // canceled work doesn't bury what still needs doing.
@@ -107,6 +128,30 @@ export function AgendaPage() {
     setEditing(appointment);
     setFormOpen(true);
   }, []);
+
+  const handleConclude = useCallback(
+    async (appointment: AppointmentWithEmployee) => {
+      try {
+        await concludeMutation.mutateAsync(appointment.id);
+        toast.success("Atendimento concluído! ✅");
+      } catch (err) {
+        toast.error(friendlyError(err));
+      }
+    },
+    [concludeMutation],
+  );
+
+  const handleReopen = useCallback(
+    async (appointment: AppointmentWithEmployee) => {
+      try {
+        await reopenMutation.mutateAsync(appointment.id);
+        toast.success("Agendamento reaberto.");
+      } catch (err) {
+        toast.error(friendlyError(err));
+      }
+    },
+    [reopenMutation],
+  );
 
   const handleDelete = useCallback(
     async (appointment: AppointmentWithEmployee) => {
@@ -152,8 +197,15 @@ export function AgendaPage() {
       {/* Whose appointments — applied before the status split, so the tab
           counts always describe the list you're actually looking at. */}
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-xs text-muted">
-          {visible.length} {visible.length === 1 ? "agendamento" : "agendamentos"} no dia
+        <span className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted">
+          <span>
+            {visible.length} {visible.length === 1 ? "agendamento" : "agendamentos"} no dia
+          </span>
+          {awaitingCount > 0 && (
+            <span className="font-medium text-warning">
+              · {awaitingCount} a confirmar
+            </span>
+          )}
         </span>
 
         <button
@@ -234,15 +286,19 @@ export function AgendaPage() {
         */
         <div key={statusTab} className="list-swap space-y-3">
           <AnimatePresence initial={false} mode="popLayout">
-            {shown.map(({ appointment, status }) => (
+            {shown.map(({ appointment, status, awaiting }) => (
               <AppointmentCard
                 key={appointment.id}
                 appointment={appointment}
                 status={status}
+                awaiting={awaiting}
                 staffNames={staffNames}
                 onEdit={handleEdit}
                 onCancel={setCanceling}
                 onDelete={handleDelete}
+                onConclude={handleConclude}
+                onReopen={handleReopen}
+                busy={concludeMutation.isPending || reopenMutation.isPending}
               />
             ))}
           </AnimatePresence>

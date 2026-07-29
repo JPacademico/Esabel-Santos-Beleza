@@ -43,6 +43,9 @@ export function friendlyError(error: unknown): string {
     return "Só é possível agendar até 2 meses à frente.";
   }
   if (lower.includes("cancel_requires_reason")) return "Informe o motivo do cancelamento.";
+  if (lower.includes("conclude_requires_timestamp")) {
+    return "Não foi possível concluir o agendamento. Recarregue a página e tente novamente.";
+  }
   if (lower.includes("row-level security") || lower.includes("violates row-level")) {
     return "Você não tem permissão para esta ação.";
   }

@@ -1,17 +1,31 @@
 import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
-import { STATUS_LABEL, STATUS_STYLES, type DisplayStatus } from "@/lib/status";
+import {
+  AWAITING_LABEL,
+  AWAITING_STYLE,
+  STATUS_LABEL,
+  STATUS_STYLES,
+  type DisplayStatus,
+} from "@/lib/status";
 
 /* ---------------------------------- Badge ---------------------------------- */
 
-export function StatusBadge({ status }: { status: DisplayStatus }) {
-  const styles = STATUS_STYLES[status];
+/**
+ * `awaiting` is a still-scheduled appointment whose time has passed. It is not
+ * a fourth status — it's the same `scheduled` row asking to be confirmed, so it
+ * borrows the warning palette without leaving the "Agendados" list.
+ */
+export function StatusBadge({
+  status,
+  awaiting = false,
+}: {
+  status: DisplayStatus;
+  awaiting?: boolean;
+}) {
+  const styles = awaiting ? AWAITING_STYLE : STATUS_STYLES[status];
   return (
-    <motion.span
-      layout
-      initial={{ scale: 0.9, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
+    <span
       className={cn(
         "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1",
         "text-xs font-medium",
@@ -19,8 +33,8 @@ export function StatusBadge({ status }: { status: DisplayStatus }) {
       )}
     >
       <span className={cn("h-1.5 w-1.5 rounded-full", styles.dot)} />
-      {STATUS_LABEL[status]}
-    </motion.span>
+      {awaiting ? AWAITING_LABEL : STATUS_LABEL[status]}
+    </span>
   );
 }
 

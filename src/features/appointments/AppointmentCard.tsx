@@ -1,6 +1,17 @@
 import { memo } from "react";
 import { motion } from "framer-motion";
-import { Ban, Clock, MessageCircle, Pencil, Phone, Scissors, Trash2, UserRound } from "lucide-react";
+import {
+  Ban,
+  CheckCircle2,
+  Clock,
+  MessageCircle,
+  Pencil,
+  Phone,
+  RotateCcw,
+  Scissors,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 import { StatusBadge } from "@/components/ui/Feedback";
 import type { DisplayStatus } from "@/lib/status";
 import { formatTime } from "@/lib/dates";
@@ -12,12 +23,13 @@ import type { AppointmentWithEmployee } from "@/types/domain";
 
 interface Props {
   appointment: AppointmentWithEmployee;
-  /**
-   * Computed by the parent rather than derived from a `now` prop: passing the
-   * clock would re-render every card each minute, whereas the status string
-   * only changes when an appointment actually becomes "Concluído".
-   */
   status: DisplayStatus;
+  /**
+   * Still scheduled, but the booked time has passed — waiting to be confirmed
+   * or cancelled. Derived by the parent rather than from a `now` prop here, so
+   * the minute tick re-renders one component instead of every card.
+   */
+  awaiting: boolean;
   /**
    * id → name for every professional. Only consulted when an appointment is
    * split across staff; the common single-professional case reads the joined
@@ -27,6 +39,10 @@ interface Props {
   onEdit: (appointment: AppointmentWithEmployee) => void;
   onCancel: (appointment: AppointmentWithEmployee) => void;
   onDelete: (appointment: AppointmentWithEmployee) => void;
+  onConclude: (appointment: AppointmentWithEmployee) => void;
+  onReopen: (appointment: AppointmentWithEmployee) => void;
+  /** Disables the completion actions while one is in flight. */
+  busy?: boolean;
 }
 
 /** Short label for a chip — full names make the chips wrap on a phone. */
@@ -38,10 +54,14 @@ function firstNameOf(fullName: string | undefined): string {
 function AppointmentCardBase({
   appointment,
   status,
+  awaiting,
   staffNames,
   onEdit,
   onCancel,
   onDelete,
+  onConclude,
+  onReopen,
+  busy,
 }: Props) {
   const isAdmin = useAuthStore((s) => s.isAdmin);
   const userId = useAuthStore((s) => s.session?.user.id);
@@ -60,6 +80,14 @@ function AppointmentCardBase({
   // The phone is optional on an appointment, so every WhatsApp affordance is
   // gated on a usable number rather than merely a non-empty one.
   const canMessage = hasWhatsApp(appointment.client_phone);
+
+  const railTone = isCanceled
+    ? "text-danger"
+    : isConcluded
+      ? "text-success"
+      : awaiting
+        ? "text-warning"
+        : "text-accent";
 
   return (
     <motion.article
@@ -86,25 +114,21 @@ function AppointmentCardBase({
       )}
     >
       <div className="flex items-start gap-3">
-        {/* Time rail */}
+        {/* Time rail — warning tint while an appointment is awaiting confirmation. */}
         <div
           className={cn(
             "flex w-14 shrink-0 flex-col items-center rounded-lg py-2",
-            isCanceled ? "bg-danger/10" : isConcluded ? "bg-success/10" : "bg-accent/10",
+            isCanceled
+              ? "bg-danger/10"
+              : isConcluded
+                ? "bg-success/10"
+                : awaiting
+                  ? "bg-warning/10"
+                  : "bg-accent/10",
           )}
         >
-          <Clock
-            className={cn(
-              "mb-0.5 h-3.5 w-3.5",
-              isCanceled ? "text-danger" : isConcluded ? "text-success" : "text-accent",
-            )}
-          />
-          <span
-            className={cn(
-              "text-sm font-semibold tabular-nums",
-              isCanceled ? "text-danger" : isConcluded ? "text-success" : "text-accent",
-            )}
-          >
+          <Clock className={cn("mb-0.5 h-3.5 w-3.5", railTone)} />
+          <span className={cn("text-sm font-semibold tabular-nums", railTone)}>
             {formatTime(appointment.scheduled_at)}
           </span>
         </div>
@@ -119,7 +143,7 @@ function AppointmentCardBase({
             >
               {appointment.client_name}
             </h3>
-            <StatusBadge status={status} />
+            <StatusBadge status={status} awaiting={awaiting} />
           </div>
 
           {/*
@@ -201,6 +225,35 @@ function AppointmentCardBase({
               WhatsApp
             </button>
 
+            {/*
+              "Concluir" only appears once the booked time has passed, matching
+              the DB rule that nothing can be finished before it starts. Cancel
+              stays available on a past appointment on purpose — a client who
+              cancels late is precisely the case the old time-based rule got
+              wrong.
+            */}
+            {canMutate && awaiting && (
+              <button
+                onClick={() => onConclude(appointment)}
+                disabled={busy}
+                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-success transition hover:bg-success/10 disabled:opacity-50"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Concluir
+              </button>
+            )}
+
+            {canMutate && isConcluded && (
+              <button
+                onClick={() => onReopen(appointment)}
+                disabled={busy}
+                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted transition hover:bg-surface-2 hover:text-text disabled:opacity-50"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Reabrir
+              </button>
+            )}
+
             {canMutate && !isCanceled && (
               <>
                 <button
@@ -210,13 +263,15 @@ function AppointmentCardBase({
                   <Pencil className="h-3.5 w-3.5" />
                   Editar
                 </button>
-                <button
-                  onClick={() => onCancel(appointment)}
-                  className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-danger transition hover:bg-danger/10"
-                >
-                  <Ban className="h-3.5 w-3.5" />
-                  Cancelar
-                </button>
+                {!isConcluded && (
+                  <button
+                    onClick={() => onCancel(appointment)}
+                    className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-danger transition hover:bg-danger/10"
+                  >
+                    <Ban className="h-3.5 w-3.5" />
+                    Cancelar
+                  </button>
+                )}
               </>
             )}
 

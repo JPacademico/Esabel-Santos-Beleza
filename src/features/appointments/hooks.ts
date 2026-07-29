@@ -153,6 +153,55 @@ export function useCancelAppointment() {
   });
 }
 
+/**
+ * Marks an appointment as done. Completion is explicit — nothing infers it
+ * from the clock — so a no-show or a late cancellation stays distinguishable
+ * from a client who was actually served.
+ *
+ * The cancellation fields are cleared alongside so a reopened-then-concluded
+ * appointment can't keep rendering a stale reason. The DB trigger enforces the
+ * same thing; sending it here keeps the optimistic cache honest too.
+ */
+export function useConcludeAppointment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase
+        .from("appointments")
+        .update({
+          status: "concluded",
+          concluded_at: new Date().toISOString(),
+          cancellation_reason: null,
+          canceled_at: null,
+        })
+        .eq("id", id)
+        .select(SELECT_WITH_EMPLOYEE)
+        .single();
+      if (error) throw error;
+      return data as unknown as AppointmentWithEmployee;
+    },
+    onSuccess: () => invalidateAppointments(qc),
+  });
+}
+
+/** Undo: puts a concluded appointment back to scheduled (marked by mistake). */
+export function useReopenAppointment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase
+        .from("appointments")
+        .update({ status: "scheduled", concluded_at: null })
+        .eq("id", id)
+        .select(SELECT_WITH_EMPLOYEE)
+        .single();
+      if (error) throw error;
+      return data as unknown as AppointmentWithEmployee;
+    },
+    onSuccess: () => invalidateAppointments(qc),
+  });
+}
+
 export function useDeleteAppointment() {
   const qc = useQueryClient();
   return useMutation({

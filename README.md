@@ -77,11 +77,27 @@ Usernames map to synthetic emails (`user@salon.internal`) inside
 [`lib/supabase.ts`](src/lib/supabase.ts). The UI never shows an email. Sessions
 persist 7 days (`persistSession` here + a 7-day inactivity timeout server-side).
 
-### "Concluído" is computed, never stored
-[`lib/status.ts`](src/lib/status.ts) derives the display status at render time:
-canceled → `canceled`; else past → `concluded`; else `scheduled`. A 60-second
-tick (`useNowTick`) flips cards as time passes. **No CRON, no status writes.**
-The database only ever stores `scheduled` or `canceled`.
+### "Concluído" is marked explicitly
+All three statuses are **stored**. Completion is an action taken by the owner or
+an assigned professional, exactly like cancellation.
+
+It used to be computed (past AND not canceled), which equated "the time passed"
+with "it happened" — a no-show, or a client who cancelled *after* the booked
+hour, was indistinguishable from one who was served. That was the reason for the
+change.
+
+A past appointment still sitting at `scheduled` is therefore **awaiting
+confirmation**: [`isAwaitingCompletion()`](src/lib/status.ts) flags it, the card
+shows a warning "Confirmar" badge, and the day header counts them. It is not a
+fourth status and gets no list of its own — it is a prompt for action, so it
+stays under "Agendados". This is the only reason the agenda still keeps a
+60-second tick (`useNowTick`).
+
+Invariants live in the database, not just the UI: `concluded_at` is required
+when concluded and cleared otherwise, cancellation fields and completion are
+mutually exclusive, and nothing can be marked concluded with a future date
+(which also blocks rescheduling a concluded appointment forward). Still **no
+CRON** — nothing sweeps statuses on a timer.
 
 ### 2-month booking horizon
 Enforced twice: the UI disables navigation/creation past the limit
