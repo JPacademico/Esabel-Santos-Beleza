@@ -66,6 +66,26 @@ export function isSplitAcrossStaff(appointment: AssignmentSource): boolean {
 }
 
 /**
+ * Does this appointment belong to `userId`?
+ *
+ * The single definition of "mine". Used by the agenda's "Só os meus" filter and
+ * by the card's edit/cancel permission check — the two must agree, or a
+ * professional sees an appointment in their list that they can't act on.
+ *
+ * A split appointment belongs to *everyone* performing any of its services, so
+ * "Manicure com a Ana, Pedicure com a Bruna" appears in both their lists.
+ *
+ * The `employee_id` arm is a fallback, not a separate rule: the database keeps
+ * employee_id equal to service_employee_ids[0], so it only matters for payloads
+ * cached before the column existed.
+ */
+export function isAssignedTo(appointment: AssignmentSource, userId: string | undefined): boolean {
+  if (!userId) return false;
+  if (appointment.employee_id === userId) return true;
+  return (appointment.service_employee_ids ?? []).includes(userId);
+}
+
+/**
  * Re-aligns the assignment array after the service list changes.
  *
  * Assignments follow their service by name rather than by index, so removing

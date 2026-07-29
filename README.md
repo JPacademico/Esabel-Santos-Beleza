@@ -96,6 +96,20 @@ sync as the joined display string, which is what push notifications read.
 [`lib/services.ts`](src/lib/services.ts) falls back to splitting that string for
 any payload predating the column.
 
+### Agenda filtering
+Two independent filters, both held in `uiStore` rather than page state — the
+app shell keys the page subtree on the pathname, so local state would reset
+every time you page to another day.
+
+- **Scope** (`Todos` / `Só os meus`) — [`isAssignedTo()`](src/lib/services.ts)
+  is the single definition of "mine", shared with the card's edit/cancel
+  permission check so the list you see and the rows you can act on can't
+  disagree. A split appointment counts as *everyone's* who performs part of it.
+- **Status tabs** (`Agendados` / `Concluídos` / `Cancelados`) — the day is split
+  into three lists so finished and canceled work doesn't bury what's pending.
+  Counts stay visible on every tab because "Agendados" is the default and a
+  past day would otherwise look empty.
+
 ### Per-service professionals (admin only)
 An appointment can be split across staff — one service with one professional,
 another with someone else. `service_employee_ids` runs positionally parallel to

@@ -5,7 +5,7 @@ import { StatusBadge } from "@/components/ui/Feedback";
 import type { DisplayStatus } from "@/lib/status";
 import { formatTime } from "@/lib/dates";
 import { formatBRPhone, greeting, hasWhatsApp, openWhatsApp } from "@/lib/whatsapp";
-import { appointmentServices, serviceAssignments } from "@/lib/services";
+import { appointmentServices, isAssignedTo, serviceAssignments } from "@/lib/services";
 import { cn } from "@/lib/cn";
 import { useAuthStore } from "@/stores/authStore";
 import type { AppointmentWithEmployee } from "@/types/domain";
@@ -46,12 +46,10 @@ function AppointmentCardBase({
   const isAdmin = useAuthStore((s) => s.isAdmin);
   const userId = useAuthStore((s) => s.session?.user.id);
 
-  // Mirrors the RLS mutation rule: admin, the lead, or anyone assigned to one
-  // of the services (a split appointment belongs to everyone performing it).
-  const canMutate =
-    isAdmin ||
-    appointment.employee_id === userId ||
-    (userId ? (appointment.service_employee_ids ?? []).includes(userId) : false);
+  // Mirrors the RLS mutation rule: admin, or anyone assigned to any of the
+  // services. Same predicate the agenda's "Só os meus" filter uses, so the
+  // list you see and the rows you can act on can never disagree.
+  const canMutate = isAdmin || isAssignedTo(appointment, userId);
   const isCanceled = status === "canceled";
   const isConcluded = status === "concluded";
 

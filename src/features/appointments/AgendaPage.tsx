@@ -1,24 +1,25 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarPlus, CalendarX2, Filter, Plus } from "lucide-react";
+import { CalendarCheck, CalendarPlus, CalendarX2, Filter, Plus } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/Button";
 import { AppointmentSkeleton, EmptyState } from "@/components/ui/Feedback";
 import { useAuthStore } from "@/stores/authStore";
+import { useUIStore } from "@/stores/uiStore";
 import { useNowTick } from "@/hooks/useNowTick";
-import { computeAppointmentStatus } from "@/lib/status";
+import { computeAppointmentStatus, type DisplayStatus } from "@/lib/status";
 import { fromDateParam, isWithinHorizon, startOfMonth, toDateParam } from "@/lib/dates";
 import { friendlyError, cn } from "@/lib/cn";
+import { isAssignedTo } from "@/lib/services";
 import { DayPager } from "./DayPager";
 import { MonthGrid } from "./MonthGrid";
 import { AppointmentCard } from "./AppointmentCard";
 import { AppointmentForm } from "./AppointmentForm";
 import { CancelModal } from "./CancelModal";
+import { StatusTabs, STATUS_ORDER, STATUS_TAB_LABEL } from "./StatusTabs";
 import { useAppointmentsByDay, useDeleteAppointment, useEmployeeNames } from "./hooks";
 import type { AppointmentWithEmployee } from "@/types/domain";
-
-type Scope = "all" | "mine";
 
 export function AgendaPage() {
   const { date } = useParams<{ date?: string }>();
@@ -36,7 +37,13 @@ export function AgendaPage() {
 
   const [showMonth, setShowMonth] = useState(false);
   const [month, setMonth] = useState(() => startOfMonth(day));
-  const [scope, setScope] = useState<Scope>("all");
+  // Filters live in the UI store, not local state: the app shell remounts this
+  // page on every navigation (see AppShell's `key={location.pathname}`), so
+  // local state would reset each time you page to another day.
+  const scope = useUIStore((s) => s.agendaScope);
+  const setScope = useUIStore((s) => s.setAgendaScope);
+  const statusTab = useUIStore((s) => s.agendaStatus);
+  const setStatusTab = useUIStore((s) => s.setAgendaStatus);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AppointmentWithEmployee | null>(null);
   const [canceling, setCanceling] = useState<AppointmentWithEmployee | null>(null);
@@ -49,11 +56,9 @@ export function AgendaPage() {
   const visible = useMemo(() => {
     const list = appointments ?? [];
     if (scope !== "mine" || !userId) return list;
-    // "Mine" includes appointments split across staff where I perform any one
-    // of the services — not only the ones where I'm the lead.
-    return list.filter(
-      (a) => a.employee_id === userId || (a.service_employee_ids ?? []).includes(userId),
-    );
+    // Shares its definition of "mine" with the card's permission check, so a
+    // split appointment shows up for every professional performing part of it.
+    return list.filter((a) => isAssignedTo(a, userId));
   }, [appointments, scope, userId]);
 
   // Status is derived once here so cards receive a stable string rather than
@@ -63,11 +68,25 @@ export function AgendaPage() {
     [visible, now],
   );
 
-  const summary = useMemo(() => {
-    const counts = { scheduled: 0, concluded: 0, canceled: 0 };
-    for (const row of rows) counts[row.status]++;
-    return counts;
+  const counts = useMemo(() => {
+    const tally: Record<DisplayStatus, number> = { scheduled: 0, concluded: 0, canceled: 0 };
+    for (const row of rows) tally[row.status]++;
+    return tally;
   }, [rows]);
+
+  // The list actually rendered: one status at a time, so a day's finished and
+  // canceled work doesn't bury what still needs doing.
+  const shown = useMemo(() => rows.filter((row) => row.status === statusTab), [rows, statusTab]);
+
+  /**
+   * When the selected tab is empty but the day isn't, which tab to point at.
+   * Follows STATUS_ORDER so "Agendados" is offered before "Concluídos" before
+   * "Cancelados" — the same priority the tabs themselves are laid out in.
+   */
+  const elsewhere = useMemo(
+    () => STATUS_ORDER.find((s) => s !== statusTab && counts[s] > 0),
+    [counts, statusTab],
+  );
 
   function goToDay(next: Date) {
     navigate(`/agenda/${toDateParam(next)}`);
@@ -130,17 +149,15 @@ export function AgendaPage() {
         )}
       </AnimatePresence>
 
-      {/* Day summary + scope filter */}
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
-          <span className="font-medium text-text">{visible.length}</span>
-          <span>{visible.length === 1 ? "agendamento" : "agendamentos"}</span>
-          {summary.concluded > 0 && <span className="text-success">· {summary.concluded} concluído(s)</span>}
-          {summary.canceled > 0 && <span className="text-danger">· {summary.canceled} cancelado(s)</span>}
-        </div>
+      {/* Whose appointments — applied before the status split, so the tab
+          counts always describe the list you're actually looking at. */}
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-xs text-muted">
+          {visible.length} {visible.length === 1 ? "agendamento" : "agendamentos"} no dia
+        </span>
 
         <button
-          onClick={() => setScope((s) => (s === "all" ? "mine" : "all"))}
+          onClick={() => setScope(scope === "all" ? "mine" : "all")}
           className={cn(
             "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition",
             scope === "mine"
@@ -152,6 +169,8 @@ export function AgendaPage() {
           {scope === "mine" ? "Só os meus" : "Todos"}
         </button>
       </div>
+
+      <StatusTabs value={statusTab} onChange={setStatusTab} counts={counts} />
 
       {/* List */}
       {isLoading ? (
@@ -184,10 +203,32 @@ export function AgendaPage() {
             ) : undefined
           }
         />
+      ) : shown.length === 0 ? (
+        /*
+          The day has appointments, just none in this tab — the common case
+          being a past day where everything already counts as concluded. Point
+          at where they went instead of showing a bare "nothing here".
+        */
+        <EmptyState
+          icon={<CalendarCheck className="h-8 w-8" />}
+          title={`Nada em ${STATUS_TAB_LABEL[statusTab]}`}
+          description={
+            elsewhere
+              ? `Este dia tem ${counts[elsewhere]} ${STATUS_TAB_LABEL[elsewhere].toLowerCase()}.`
+              : "Nenhum agendamento nesta situação."
+          }
+          action={
+            elsewhere ? (
+              <Button variant="secondary" onClick={() => setStatusTab(elsewhere)}>
+                Ver {STATUS_TAB_LABEL[elsewhere].toLowerCase()}
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <motion.div layout className="space-y-3">
           <AnimatePresence mode="popLayout">
-            {rows.map(({ appointment, status }) => (
+            {shown.map(({ appointment, status }) => (
               <AppointmentCard
                 key={appointment.id}
                 appointment={appointment}
