@@ -35,6 +35,24 @@ async function readBody(res: Response): Promise<string | null> {
  * body held a serialised object.
  */
 export async function invokeFunction<T>(name: string, body: object = {}): Promise<T> {
+  try {
+    return await callFunction<T>(name, body);
+  } catch (e) {
+    // A 401 usually means the access token aged out while the tab sat idle:
+    // the JWT lives an hour and the background refresh doesn't always fire in a
+    // hidden tab. Refresh once and retry rather than making the admin sign in
+    // again mid-action. Only retried once, and only for 401, so a genuinely
+    // rejected caller still fails fast.
+    if (!(e instanceof FunctionError) || e.status !== 401) throw e;
+
+    const { data, error } = await supabase.auth.refreshSession();
+    if (error || !data.session) throw e;
+
+    return await callFunction<T>(name, body);
+  }
+}
+
+async function callFunction<T>(name: string, body: object): Promise<T> {
   const { data, error } = await supabase.functions.invoke(name, {
     body: body as Record<string, unknown>,
   });
