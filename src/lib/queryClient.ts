@@ -35,4 +35,10 @@ export const queryKeys = {
   employeeRoster: ["employees", "roster"] as const,
   /** Assignable staff for pickers: excludes deactivated accounts. */
   employeeOptions: ["employees", "options"] as const,
+  /**
+   * id → name lookup for rendering split appointments. Available to every
+   * role (unlike the two above) and includes deactivated staff, because a past
+   * appointment may still reference someone who has since left.
+   */
+  employeeNames: ["employees", "names"] as const,
 };

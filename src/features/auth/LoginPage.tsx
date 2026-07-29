@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuthStore } from "@/stores/authStore";
 import { useLogin } from "./hooks";
 import { friendlyError } from "@/lib/cn";
+import { BRAND_NAME } from "@/lib/brand";
 
 export function LoginPage() {
   const session = useAuthStore((s) => s.session);
@@ -61,7 +62,7 @@ export function LoginPage() {
       >
         <div className="mb-7 flex flex-col items-center text-center">
           <HairstyleMark />
-          <h1 className="mt-1 text-xl font-semibold text-text">Esabel Santos Beleza</h1>
+          <h1 className="mt-1 text-xl font-semibold text-text">{BRAND_NAME}</h1>
           <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
             <Scissors className="h-3.5 w-3.5 text-accent" />
             Agenda interna da equipe

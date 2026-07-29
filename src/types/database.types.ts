@@ -80,7 +80,12 @@ export type Database = {
           client_id: string | null;
           client_name: string;
           client_phone: string | null;
+          /** The LEAD professional — mirrors service_employee_ids[0]. */
           employee_id: string;
+          services: string[];
+          /** Positionally parallel to `services`: who performs services[i]. */
+          service_employee_ids: string[];
+          /** Joined display string ("Manicure + Pedicure"), synced from `services` by a DB trigger. */
           service_name: string;
           scheduled_at: string;
           status: Database["public"]["Enums"]["appointment_status"];
@@ -96,7 +101,10 @@ export type Database = {
           client_name: string;
           client_phone?: string | null;
           employee_id: string;
-          service_name: string;
+          services?: string[];
+          service_employee_ids?: string[];
+          /** Optional on write: the trigger derives it from `services`. */
+          service_name?: string;
           scheduled_at: string;
           status?: Database["public"]["Enums"]["appointment_status"];
           cancellation_reason?: string | null;
@@ -111,6 +119,8 @@ export type Database = {
           client_name?: string;
           client_phone?: string | null;
           employee_id?: string;
+          services?: string[];
+          service_employee_ids?: string[];
           service_name?: string;
           scheduled_at?: string;
           status?: Database["public"]["Enums"]["appointment_status"];

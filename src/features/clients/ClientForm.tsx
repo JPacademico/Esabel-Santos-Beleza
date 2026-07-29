@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Cake, Phone, UserRound } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Modal } from "@/components/ui/Modal";
@@ -28,8 +28,22 @@ export function ClientForm({ open, onClose, client, prefillName, onCreated }: Pr
   const [phone, setPhone] = useState("");
   const [birthday, setBirthday] = useState("");
 
+  /**
+   * Seed once per open. Same guard as AppointmentForm: `client` comes from a
+   * Query cache, so a realtime event or background refetch hands us a new
+   * object identity and would otherwise wipe the form mid-edit.
+   */
+  const seededFor = useRef<string | null>(null);
+
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      seededFor.current = null;
+      return;
+    }
+    const seedKey = client?.id ?? `new:${prefillName ?? ""}`;
+    if (seededFor.current === seedKey) return;
+    seededFor.current = seedKey;
+
     setFullName(client?.full_name ?? prefillName ?? "");
     setPhone(client?.phone ? formatBRPhone(client.phone) : "");
     setBirthday(client?.birthday ?? "");

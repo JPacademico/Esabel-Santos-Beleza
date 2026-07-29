@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { EmptyState, Skeleton } from "@/components/ui/Feedback";
 import { useAuthStore } from "@/stores/authStore";
-import { formatBRPhone, openWhatsApp } from "@/lib/whatsapp";
+import { formatBRPhone, greeting, openWhatsApp } from "@/lib/whatsapp";
 import { friendlyError } from "@/lib/cn";
 import { ClientForm } from "./ClientForm";
 import { useClients, useDeleteClient } from "./hooks";
@@ -126,10 +126,7 @@ export function ClientsPage() {
                   {client.phone && (
                     <button
                       onClick={() =>
-                        openWhatsApp(
-                          client.phone,
-                          `Olá ${client.full_name.split(" ")[0]}! 💇‍♀️ Aqui é do *Esabel Santos Beleza*.`,
-                        )
+                        openWhatsApp(client.phone, greeting(client.full_name))
                       }
                       aria-label="Abrir WhatsApp"
                       className="rounded-lg p-2 text-success transition hover:bg-success/10"

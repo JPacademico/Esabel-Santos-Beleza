@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, MessageCircle } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Field";
-import { cancellationMessage, openWhatsApp, waLink } from "@/lib/whatsapp";
+import { cancellationMessage, hasWhatsApp, openWhatsApp, waLink } from "@/lib/whatsapp";
+import { formatServices } from "@/lib/services";
 import { formatFullPtBR } from "@/lib/dates";
 import { friendlyError } from "@/lib/cn";
 import { useCancelAppointment } from "./hooks";
@@ -42,11 +43,19 @@ export function CancelModal({ appointment, onClose }: Props) {
   const [result, setResult] = useState<CancelResult | null>(null);
   const cancelMutation = useCancelAppointment();
 
+  // Reset per appointment id, not per object identity — a refetch that hands us
+  // an equivalent-but-new object must not clear a half-typed reason.
+  const seededFor = useRef<string | null>(null);
+
   useEffect(() => {
-    if (appointment) {
-      setReason("");
-      setResult(null);
+    if (!appointment) {
+      seededFor.current = null;
+      return;
     }
+    if (seededFor.current === appointment.id) return;
+    seededFor.current = appointment.id;
+    setReason("");
+    setResult(null);
   }, [appointment]);
 
   const trimmed = reason.trim();
@@ -57,19 +66,24 @@ export function CancelModal({ appointment, onClose }: Props) {
     try {
       await cancelMutation.mutateAsync({ id: appointment.id, reason: trimmed });
 
+      // No usable number → the cancellation still stands, we just can't notify.
+      const canMessage = hasWhatsApp(appointment.client_phone);
+      if (!canMessage) {
+        setResult({ link: null, autoOpened: false });
+        toast.success("Agendamento cancelado.");
+        return;
+      }
+
       const message = cancellationMessage({
         clientName: appointment.client_name,
-        service: appointment.service_name,
+        service: formatServices(appointment),
         scheduledAt: appointment.scheduled_at,
         reason: trimmed,
       });
 
-      const hasPhone = Boolean(appointment.client_phone?.replace(/\D/g, ""));
-      const autoOpened = hasPhone ? openWhatsApp(appointment.client_phone, message) : false;
-
       setResult({
-        link: hasPhone ? waLink(appointment.client_phone, message) : null,
-        autoOpened,
+        link: waLink(appointment.client_phone, message),
+        autoOpened: openWhatsApp(appointment.client_phone, message),
       });
       toast.success("Agendamento cancelado.");
     } catch (error) {
@@ -81,7 +95,7 @@ export function CancelModal({ appointment, onClose }: Props) {
     <Modal
       open={appointment !== null}
       onClose={onClose}
-      title={result ? "Avisar a cliente" : "Cancelar agendamento"}
+      title={result ? (result.link ? "Avisar a cliente" : "Cancelado") : "Cancelar agendamento"}
       description={
         appointment
           ? `${appointment.client_name} · ${formatFullPtBR(appointment.scheduled_at)}`
@@ -121,7 +135,9 @@ export function CancelModal({ appointment, onClose }: Props) {
           <div className="flex gap-3 rounded-lg border border-success/25 bg-success/10 p-3">
             <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
             <p className="text-sm text-text">
-              Agendamento cancelado. Agora avise a cliente.
+              {result.link
+                ? "Agendamento cancelado. Agora avise a cliente."
+                : "Agendamento cancelado."}
             </p>
           </div>
 
@@ -148,8 +164,8 @@ export function CancelModal({ appointment, onClose }: Props) {
             </>
           ) : (
             <p className="rounded-lg bg-surface-2 p-3 text-xs text-muted">
-              Esta cliente não tem telefone cadastrado, então não é possível enviar o aviso
-              automaticamente.
+              Este agendamento não tem telefone, então nenhum aviso foi enviado. Se quiser avisar
+              pelo WhatsApp, adicione o número editando o agendamento.
             </p>
           )}
         </div>
@@ -158,8 +174,15 @@ export function CancelModal({ appointment, onClose }: Props) {
           <div className="flex gap-3 rounded-lg border border-warning/25 bg-warning/10 p-3">
             <AlertTriangle className="h-5 w-5 shrink-0 text-warning" />
             <p className="text-sm text-text">
-              O motivo é <strong>obrigatório</strong> e será enviado à cliente na mensagem de
-              cancelamento.
+              O motivo é <strong>obrigatório</strong>
+              {appointment && hasWhatsApp(appointment.client_phone) ? (
+                <> e será enviado à cliente na mensagem de cancelamento.</>
+              ) : (
+                <>
+                  . Este agendamento não tem telefone, então ele ficará registrado aqui, mas{" "}
+                  <strong>nenhum aviso será enviado</strong>.
+                </>
+              )}
             </p>
           </div>
 

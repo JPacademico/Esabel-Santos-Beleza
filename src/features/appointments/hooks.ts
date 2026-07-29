@@ -74,6 +74,26 @@ export function useEmployeeOptions(enabled = true) {
   });
 }
 
+/**
+ * id → full name for every professional, including deactivated ones.
+ *
+ * Split appointments name a professional per service, and only the lead is
+ * joined on the appointment row — PostgREST can't join through a uuid[] column.
+ * Rather than N joins, the roster is fetched once and shared: it is small
+ * (single-digit staff) and changes rarely, hence the long staleTime.
+ */
+export function useEmployeeNames() {
+  return useQuery({
+    queryKey: queryKeys.employeeNames,
+    staleTime: 10 * 60_000,
+    queryFn: async (): Promise<Map<string, string>> => {
+      const { data, error } = await supabase.from("profiles").select("id, full_name");
+      if (error) throw error;
+      return new Map((data ?? []).map((p) => [p.id, p.full_name]));
+    },
+  });
+}
+
 function invalidateAppointments(qc: ReturnType<typeof useQueryClient>) {
   return qc.invalidateQueries({ queryKey: queryKeys.appointments });
 }

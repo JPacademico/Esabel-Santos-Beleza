@@ -1,4 +1,5 @@
 import { formatFullPtBR } from "./dates";
+import { BRAND_WA } from "./brand";
 
 const BR_COUNTRY_CODE = "55";
 
@@ -19,6 +20,22 @@ export function formatBRPhone(phone: string | null | undefined): string {
   return phone ?? "—";
 }
 
+/**
+ * Whether this phone can actually receive a WhatsApp message.
+ *
+ * The phone is optional on an appointment (one-off walk-ins often don't leave
+ * one), so every WhatsApp affordance in the app gates on this single predicate
+ * rather than on a truthiness check — `"  "` and `"(79)"` are both present but
+ * useless, and `wa.me` would open on a nonexistent number rather than fail.
+ *
+ * A Brazilian mobile is DDD (2) + 8 or 9 digits, optionally prefixed with 55.
+ */
+export function hasWhatsApp(phone: string | null | undefined): boolean {
+  let d = (phone ?? "").replace(/\D/g, "");
+  if (d.startsWith(BR_COUNTRY_CODE) && d.length > 11) d = d.slice(2);
+  return d.length === 10 || d.length === 11;
+}
+
 export function waLink(phone: string | null | undefined, message: string): string {
   return `https://wa.me/${normalizeBRPhone(phone)}?text=${encodeURIComponent(message)}`;
 }
@@ -35,8 +52,8 @@ export function waLink(phone: string | null | undefined, message: string): strin
  *    must always offer a real <a href> fallback rather than assume success.
  */
 export function openWhatsApp(phone: string | null | undefined, message: string): boolean {
+  if (!hasWhatsApp(phone)) return false;
   const number = normalizeBRPhone(phone);
-  if (!number) return false;
 
   const win = window.open(waLink(number, message), "_blank");
   if (!win) return false;
@@ -51,15 +68,24 @@ export function openWhatsApp(phone: string | null | undefined, message: string):
 
 /* ------------------------------- templates -------------------------------- */
 
+/** "Maria" from "Maria da Silva" — messages address the client informally. */
+export function firstName(fullName: string): string {
+  return fullName.trim().split(/\s+/)[0] || fullName;
+}
+
+/** Opening line shared by every outgoing client message. */
+export function greeting(fullName: string): string {
+  return `Olá ${firstName(fullName)}! 💇‍♀️ Aqui é do ${BRAND_WA}.`;
+}
+
 export function cancellationMessage(o: {
   clientName: string;
   service: string;
   scheduledAt: string;
   reason: string;
 }): string {
-  const firstName = o.clientName.trim().split(/\s+/)[0] ?? o.clientName;
   return (
-    `Olá ${firstName}! 💇‍♀️ Aqui é do *Esabel Santos Beleza*.\n\n` +
+    `${greeting(o.clientName)}\n\n` +
     `Precisamos *cancelar* o seu agendamento:\n` +
     `🗓️ ${o.service}\n` +
     `⏰ ${formatFullPtBR(o.scheduledAt)}\n` +

@@ -1,34 +1,25 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { CalendarClock, Phone, Scissors, UserRound } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { CalendarClock, Phone, UserRound } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
-import { Input, Select } from "@/components/ui/Field";
+import { Input } from "@/components/ui/Field";
 import { ClientAutocomplete } from "@/features/clients/ClientAutocomplete";
 import { ClientForm } from "@/features/clients/ClientForm";
 import { useAuthStore } from "@/stores/authStore";
 import { friendlyError } from "@/lib/cn";
-import { formatBRPhone, normalizeBRPhone } from "@/lib/whatsapp";
+import { alignAssignments, appointmentServices, serviceAssignments } from "@/lib/services";
+import { formatBRPhone, hasWhatsApp, normalizeBRPhone } from "@/lib/whatsapp";
 import {
   canScheduleAt,
   fromDatetimeLocalValue,
   maxAheadDate,
   toDatetimeLocalValue,
 } from "@/lib/dates";
+import { ServicePicker } from "./ServicePicker";
+import { StaffAssignment } from "./StaffAssignment";
 import { useCreateAppointment, useEmployeeOptions, useUpdateAppointment } from "./hooks";
 import type { AppointmentWithEmployee, Client } from "@/types/domain";
-
-const SERVICE_SUGGESTIONS = [
-  "Corte",
-  "Escova",
-  "Coloração",
-  "Hidratação",
-  "Progressiva",
-  "Manicure",
-  "Pedicure",
-  "Maquiagem",
-  "Sobrancelha",
-];
 
 interface Props {
   open: boolean;
@@ -54,22 +45,51 @@ export function AppointmentForm({ open, onClose, appointment, defaultDate }: Pro
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
-  const [serviceName, setServiceName] = useState("");
+  const [services, setServices] = useState<string[]>([]);
+  /** Positionally parallel to `services` — who performs services[i]. */
+  const [assignments, setAssignments] = useState<string[]>([]);
+  const [splitStaff, setSplitStaff] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
-  const [employeeId, setEmployeeId] = useState("");
   const [clientFormOpen, setClientFormOpen] = useState(false);
   const [prefillName, setPrefillName] = useState("");
 
-  // Seed the form whenever it opens.
+  /**
+   * Seed the form once per open, and never again while it stays open.
+   *
+   * The guard is the important part: this effect depends on `appointment` and
+   * `defaultDate`, which are objects. The agenda behind this modal re-renders
+   * on a 60-second clock tick (and on every realtime event), so without the
+   * ref check a new prop identity would re-run the seeding and silently wipe
+   * whatever the user had typed.
+   *
+   * Keyed by appointment id so switching straight from one edit to another —
+   * or from "new" to an edit — still re-seeds as it should.
+   */
+  const seededFor = useRef<string | null>(null);
+
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      seededFor.current = null; // re-arm for the next open
+      return;
+    }
+    const seedKey = appointment?.id ?? "new";
+    if (seededFor.current === seedKey) return;
+    seededFor.current = seedKey;
+
     if (appointment) {
+      // Falls back to the joined string / lead employee for rows predating
+      // multi-service and per-service assignment.
+      const seededServices = appointmentServices(appointment);
+      const seededStaff = serviceAssignments(appointment);
       setSelectedClient(null);
       setClientName(appointment.client_name);
       setClientPhone(appointment.client_phone ? formatBRPhone(appointment.client_phone) : "");
-      setServiceName(appointment.service_name);
+      setServices(seededServices);
+      setAssignments(seededStaff);
+      // Open straight into split mode when the appointment already is split,
+      // otherwise the admin would see a single dropdown misrepresenting it.
+      setSplitStaff(new Set(seededStaff).size > 1);
       setScheduledAt(toDatetimeLocalValue(new Date(appointment.scheduled_at)));
-      setEmployeeId(appointment.employee_id);
     } else {
       // Default to the visible day at 09:00 (or now, if that day is today and later).
       const seed = new Date(defaultDate);
@@ -77,16 +97,54 @@ export function AppointmentForm({ open, onClose, appointment, defaultDate }: Pro
       setSelectedClient(null);
       setClientName("");
       setClientPhone("");
-      setServiceName("");
+      setServices([]);
+      // Defaults to whoever is booking (the admin herself), as before.
+      setAssignments([userId]);
+      setSplitStaff(false);
       setScheduledAt(toDatetimeLocalValue(seed));
-      setEmployeeId(userId);
     }
   }, [open, appointment, defaultDate, userId]);
+
+  /**
+   * Services and assignments must stay the same length, so they change
+   * together. Assignments follow their service by name, so removing one from
+   * the middle doesn't shift the rest onto the wrong professional.
+   */
+  function handleServicesChange(next: string[]) {
+    // A newly added service inherits the lead professional (self, for employees).
+    const fallback = assignments[0] || userId;
+    setAssignments(alignAssignments(services, assignments, next, fallback));
+    setServices(next);
+  }
 
   const parsedDate = scheduledAt ? fromDatetimeLocalValue(scheduledAt) : null;
   const dateValid = parsedDate !== null && !Number.isNaN(parsedDate.getTime());
   const beyondHorizon = dateValid && !canScheduleAt(parsedDate);
-  const valid = clientName.trim() && serviceName.trim() && dateValid && !beyondHorizon && employeeId;
+
+  // The phone is optional, but a half-typed one is worse than none: it would
+  // enable a WhatsApp button that opens on a number nobody owns.
+  const phoneTyped = clientPhone.trim().length > 0;
+  const phoneUsable = hasWhatsApp(clientPhone);
+  const phoneInvalid = phoneTyped && !phoneUsable;
+
+  /**
+   * Employees always book for themselves — the assignment UI is admin-only, so
+   * their array is derived rather than trusted from state. This mirrors the DB
+   * trigger, which rejects a non-admin assigning work to anyone else.
+   */
+  const finalAssignments = isAdmin ? assignments : services.map(() => userId);
+
+  // Every service needs a professional before this can be saved.
+  const staffComplete =
+    finalAssignments.length === services.length && finalAssignments.every(Boolean);
+
+  const valid =
+    clientName.trim() &&
+    services.length > 0 &&
+    staffComplete &&
+    dateValid &&
+    !beyondHorizon &&
+    !phoneInvalid;
 
   function handleClientSelected(client: Client | null) {
     setSelectedClient(client);
@@ -103,9 +161,12 @@ export function AppointmentForm({ open, onClose, appointment, defaultDate }: Pro
     const input = {
       client_id: selectedClient?.id ?? null,
       client_name: clientName.trim(),
-      client_phone: clientPhone.trim() ? normalizeBRPhone(clientPhone) : null,
-      employee_id: employeeId,
-      service_name: serviceName.trim(),
+      client_phone: phoneUsable ? normalizeBRPhone(clientPhone) : null,
+      // The lead is whoever performs the first service; the DB trigger enforces
+      // the same rule, so sending anything else would just be overwritten.
+      employee_id: finalAssignments[0],
+      services,
+      service_employee_ids: finalAssignments,
       scheduled_at: parsedDate.toISOString(),
     };
 
@@ -160,32 +221,25 @@ export function AppointmentForm({ open, onClose, appointment, defaultDate }: Pro
           />
 
           <Input
-            label="WhatsApp da cliente"
+            label="WhatsApp da cliente (opcional)"
             type="tel"
             inputMode="numeric"
             placeholder="(79) 99999-8888"
             value={clientPhone}
             onChange={(e) => setClientPhone(e.target.value)}
             icon={<Phone className="h-4 w-4" />}
-            hint="Usado no aviso de cancelamento."
             disabled={pending}
+            error={phoneInvalid ? "Número incompleto. Use DDD + número, ou deixe em branco." : undefined}
+            hint={
+              phoneInvalid
+                ? undefined
+                : phoneUsable
+                  ? "Usado no aviso de cancelamento."
+                  : "Sem número, o botão do WhatsApp fica indisponível e o cancelamento não envia aviso."
+            }
           />
 
-          <Input
-            label="Serviço"
-            placeholder="Corte + Escova"
-            value={serviceName}
-            onChange={(e) => setServiceName(e.target.value)}
-            icon={<Scissors className="h-4 w-4" />}
-            list="service-suggestions"
-            required
-            disabled={pending}
-          />
-          <datalist id="service-suggestions">
-            {SERVICE_SUGGESTIONS.map((service) => (
-              <option key={service} value={service} />
-            ))}
-          </datalist>
+          <ServicePicker value={services} onChange={handleServicesChange} disabled={pending} />
 
           <Input
             label="Data e hora"
@@ -202,24 +256,15 @@ export function AppointmentForm({ open, onClose, appointment, defaultDate }: Pro
 
           {/* Employees always book for themselves; only the owner can assign. */}
           {isAdmin ? (
-            <Select
-              label="Profissional"
-              value={employeeId}
-              onChange={(e) => setEmployeeId(e.target.value)}
-              required
+            <StaffAssignment
+              services={services}
+              assignments={assignments}
+              onAssignmentsChange={setAssignments}
+              employees={employees}
+              split={splitStaff}
+              onSplitChange={setSplitStaff}
               disabled={pending}
-              hint="Como administradora, você pode atribuir a qualquer profissional."
-            >
-              <option value="" disabled>
-                Selecione…
-              </option>
-              {employees?.map((employee) => (
-                <option key={employee.id} value={employee.id}>
-                  {employee.full_name}
-                  {employee.role === "super_admin" ? " (você)" : ""}
-                </option>
-              ))}
-            </Select>
+            />
           ) : (
             <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 py-2.5 text-sm text-muted">
               <UserRound className="h-4 w-4" />

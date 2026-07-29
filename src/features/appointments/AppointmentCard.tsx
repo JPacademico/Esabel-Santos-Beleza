@@ -4,7 +4,8 @@ import { Ban, Clock, MessageCircle, Pencil, Phone, Scissors, Trash2, UserRound }
 import { StatusBadge } from "@/components/ui/Feedback";
 import type { DisplayStatus } from "@/lib/status";
 import { formatTime } from "@/lib/dates";
-import { formatBRPhone, openWhatsApp } from "@/lib/whatsapp";
+import { formatBRPhone, greeting, hasWhatsApp, openWhatsApp } from "@/lib/whatsapp";
+import { appointmentServices, serviceAssignments } from "@/lib/services";
 import { cn } from "@/lib/cn";
 import { useAuthStore } from "@/stores/authStore";
 import type { AppointmentWithEmployee } from "@/types/domain";
@@ -17,19 +18,50 @@ interface Props {
    * only changes when an appointment actually becomes "Concluído".
    */
   status: DisplayStatus;
+  /**
+   * id → name for every professional. Only consulted when an appointment is
+   * split across staff; the common single-professional case reads the joined
+   * `employee` on the row itself.
+   */
+  staffNames?: Map<string, string>;
   onEdit: (appointment: AppointmentWithEmployee) => void;
   onCancel: (appointment: AppointmentWithEmployee) => void;
   onDelete: (appointment: AppointmentWithEmployee) => void;
 }
 
-function AppointmentCardBase({ appointment, status, onEdit, onCancel, onDelete }: Props) {
+/** Short label for a chip — full names make the chips wrap on a phone. */
+function firstNameOf(fullName: string | undefined): string {
+  if (!fullName) return "—";
+  return fullName.trim().split(/\s+/)[0] || fullName;
+}
+
+function AppointmentCardBase({
+  appointment,
+  status,
+  staffNames,
+  onEdit,
+  onCancel,
+  onDelete,
+}: Props) {
   const isAdmin = useAuthStore((s) => s.isAdmin);
   const userId = useAuthStore((s) => s.session?.user.id);
 
-  // Mirrors the RLS mutation rule: own rows, or admin for any.
-  const canMutate = isAdmin || appointment.employee_id === userId;
+  // Mirrors the RLS mutation rule: admin, the lead, or anyone assigned to one
+  // of the services (a split appointment belongs to everyone performing it).
+  const canMutate =
+    isAdmin ||
+    appointment.employee_id === userId ||
+    (userId ? (appointment.service_employee_ids ?? []).includes(userId) : false);
   const isCanceled = status === "canceled";
   const isConcluded = status === "concluded";
+
+  const services = appointmentServices(appointment);
+  const assignments = serviceAssignments(appointment);
+  // Only worth naming a professional per service when they actually differ.
+  const split = new Set(assignments).size > 1;
+  // The phone is optional on an appointment, so every WhatsApp affordance is
+  // gated on a usable number rather than merely a non-empty one.
+  const canMessage = hasWhatsApp(appointment.client_phone);
 
   return (
     <motion.article
@@ -81,22 +113,49 @@ function AppointmentCardBase({ appointment, status, onEdit, onCancel, onDelete }
             <StatusBadge status={status} />
           </div>
 
-          <p className="mt-1 flex items-center gap-1.5 truncate text-sm text-muted">
-            <Scissors className="h-3.5 w-3.5 shrink-0" />
-            {appointment.service_name}
-          </p>
+          {/*
+            One chip per service — a booking is often a combination. When the
+            appointment is split across professionals each chip also names its
+            own, since "who does what" is the whole point of splitting it.
+          */}
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            <Scissors className="mr-0.5 h-3.5 w-3.5 shrink-0 text-muted" />
+            {services.map((service, index) => (
+              <span
+                key={service}
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-xs font-medium",
+                  isCanceled
+                    ? "bg-surface-2 text-muted line-through"
+                    : isConcluded
+                      ? "bg-success/10 text-success"
+                      : "bg-accent/10 text-accent",
+                )}
+              >
+                {service}
+                {split && (
+                  <span className="opacity-70">
+                    {" · "}
+                    {firstNameOf(staffNames?.get(assignments[index]))}
+                  </span>
+                )}
+              </span>
+            ))}
+          </div>
 
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
             <span className="flex items-center gap-1">
               <UserRound className="h-3.5 w-3.5" />
-              {appointment.employee?.full_name ?? "—"}
+              {split
+                ? [...new Set(assignments)]
+                    .map((id) => firstNameOf(staffNames?.get(id)))
+                    .join(" e ")
+                : (appointment.employee?.full_name ?? "—")}
             </span>
-            {appointment.client_phone && (
-              <span className="flex items-center gap-1">
-                <Phone className="h-3.5 w-3.5" />
-                {formatBRPhone(appointment.client_phone)}
-              </span>
-            )}
+            <span className="flex items-center gap-1">
+              <Phone className="h-3.5 w-3.5" />
+              {canMessage ? formatBRPhone(appointment.client_phone) : "Sem telefone"}
+            </span>
           </div>
 
           {isCanceled && appointment.cancellation_reason && (
@@ -107,20 +166,31 @@ function AppointmentCardBase({ appointment, status, onEdit, onCancel, onDelete }
 
           {/* Actions */}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            {appointment.client_phone && (
-              <button
-                onClick={() =>
-                  openWhatsApp(
-                    appointment.client_phone,
-                    `Olá ${appointment.client_name.split(" ")[0]}! 💇‍♀️ Aqui é do *Esabel Santos Beleza*.`,
-                  )
-                }
-                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-success transition hover:bg-success/10"
-              >
-                <MessageCircle className="h-3.5 w-3.5" />
-                WhatsApp
-              </button>
-            )}
+            {/*
+              Shown but disabled without a number, rather than hidden: the
+              absence is information ("add her number to enable this"), and a
+              button that silently disappears reads as a bug.
+            */}
+            <button
+              disabled={!canMessage}
+              title={
+                canMessage
+                  ? undefined
+                  : "Sem telefone cadastrado. Edite o agendamento para adicionar."
+              }
+              onClick={() =>
+                openWhatsApp(appointment.client_phone, greeting(appointment.client_name))
+              }
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition",
+                canMessage
+                  ? "text-success hover:bg-success/10"
+                  : "cursor-not-allowed text-muted opacity-50",
+              )}
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              WhatsApp
+            </button>
 
             {canMutate && !isCanceled && (
               <>

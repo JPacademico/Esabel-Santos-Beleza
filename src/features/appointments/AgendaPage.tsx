@@ -15,7 +15,7 @@ import { MonthGrid } from "./MonthGrid";
 import { AppointmentCard } from "./AppointmentCard";
 import { AppointmentForm } from "./AppointmentForm";
 import { CancelModal } from "./CancelModal";
-import { useAppointmentsByDay, useDeleteAppointment } from "./hooks";
+import { useAppointmentsByDay, useDeleteAppointment, useEmployeeNames } from "./hooks";
 import type { AppointmentWithEmployee } from "@/types/domain";
 
 type Scope = "all" | "mine";
@@ -26,7 +26,12 @@ export function AgendaPage() {
   const userId = useAuthStore((s) => s.session?.user.id);
 
   // The visible day comes from the URL so it survives refresh and deep links.
-  const day = fromDateParam(date);
+  //
+  // Memoised on the URL param, not recomputed per render: `day` is passed down
+  // as a prop, and a fresh Date identity every render makes it look like the
+  // day changed. The 60s tick below re-renders this component constantly, so
+  // an unmemoised Date would churn every child that depends on it.
+  const day = useMemo(() => fromDateParam(date), [date]);
   const now = useNowTick(60_000); // re-derives "Concluído" as time passes
 
   const [showMonth, setShowMonth] = useState(false);
@@ -37,11 +42,18 @@ export function AgendaPage() {
   const [canceling, setCanceling] = useState<AppointmentWithEmployee | null>(null);
 
   const { data: appointments, isLoading, isError, error } = useAppointmentsByDay(day);
+  // Fetched once here rather than per card, so a day's worth of cards share it.
+  const { data: staffNames } = useEmployeeNames();
   const deleteMutation = useDeleteAppointment();
 
   const visible = useMemo(() => {
     const list = appointments ?? [];
-    return scope === "mine" ? list.filter((a) => a.employee_id === userId) : list;
+    if (scope !== "mine" || !userId) return list;
+    // "Mine" includes appointments split across staff where I perform any one
+    // of the services — not only the ones where I'm the lead.
+    return list.filter(
+      (a) => a.employee_id === userId || (a.service_employee_ids ?? []).includes(userId),
+    );
   }, [appointments, scope, userId]);
 
   // Status is derived once here so cards receive a stable string rather than
@@ -180,6 +192,7 @@ export function AgendaPage() {
                 key={appointment.id}
                 appointment={appointment}
                 status={status}
+                staffNames={staffNames}
                 onEdit={handleEdit}
                 onCancel={setCanceling}
                 onDelete={handleDelete}

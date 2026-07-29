@@ -16,13 +16,23 @@ export type AppointmentWithEmployee = Appointment & {
   employee: Pick<Profile, "id" | "full_name"> | null;
 };
 
-/** Payload accepted by the create/edit form. */
+/**
+ * Payload accepted by the create/edit form.
+ *
+ * `services` is the source of truth — a client may book several at once. The
+ * joined `service_name` is written by a DB trigger, so it is deliberately NOT
+ * part of this payload: sending both invites the two to disagree.
+ */
 export interface AppointmentInput {
   client_id: string | null;
   client_name: string;
+  /** null when no usable number was given — disables the WhatsApp actions. */
   client_phone: string | null;
+  /** The lead professional. Must equal service_employee_ids[0]. */
   employee_id: string;
-  service_name: string;
+  services: string[];
+  /** Positionally parallel to `services`: who performs services[i]. */
+  service_employee_ids: string[];
   scheduled_at: string;
 }
 

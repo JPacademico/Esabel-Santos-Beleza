@@ -32,7 +32,7 @@ self.addEventListener("push", (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(payload.title ?? "Esabel Santos Beleza", {
+    self.registration.showNotification(payload.title ?? "Studio Esabel Santos", {
       body: payload.body ?? "Você tem um atendimento em breve.",
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",

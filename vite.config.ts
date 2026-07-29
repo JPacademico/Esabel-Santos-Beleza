@@ -42,9 +42,11 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
       },
       manifest: {
-        name: "Esabel Santos Beleza",
-        short_name: "ESB Agenda",
-        description: "Agenda interna do salão Esabel Santos Beleza",
+        // Keep in sync with BRAND_NAME in src/lib/brand.ts (the config file
+        // can't import from the app's module graph).
+        name: "Studio Esabel Santos",
+        short_name: "Studio Esabel",
+        description: "Agenda interna do Studio Esabel Santos",
         lang: "pt-BR",
         start_url: "/",
         scope: "/",

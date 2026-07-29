@@ -18,6 +18,7 @@ import { useInstallState } from "@/hooks/useInstallPrompt";
 import { usePushSetup } from "@/features/reminders/usePushSetup";
 import { useLogout } from "@/features/auth/hooks";
 import { formatBRPhone } from "@/lib/whatsapp";
+import { BRAND_NAME } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 
 function Row({
@@ -207,7 +208,7 @@ export function SettingsPage() {
         Sair da conta
       </Button>
 
-      <p className="pb-4 text-center text-[11px] text-muted">Esabel Santos Beleza · Agenda interna</p>
+      <p className="pb-4 text-center text-[11px] text-muted">{BRAND_NAME} · Agenda interna</p>
     </div>
   );
 }

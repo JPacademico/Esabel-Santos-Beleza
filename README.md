@@ -1,4 +1,4 @@
-# Esabel Santos Beleza — UI
+# Studio Esabel Santos — UI
 
 Internal salon agenda PWA. React + TypeScript + Vite, talking directly to
 Supabase (auth, data, realtime) with **Row Level Security as the authority** —
@@ -88,10 +88,43 @@ Enforced twice: the UI disables navigation/creation past the limit
 ([`lib/dates.ts`](src/lib/dates.ts)), and a database trigger rejects it. The UI
 clamp is convenience; the trigger is the guarantee.
 
+### Multiple services per appointment
+A booking carries a list ("Manicure + Pedicure"), edited with
+[`ServicePicker`](src/features/appointments/ServicePicker.tsx). `services text[]`
+is the source of truth; the database keeps the legacy `service_name` column in
+sync as the joined display string, which is what push notifications read.
+[`lib/services.ts`](src/lib/services.ts) falls back to splitting that string for
+any payload predating the column.
+
+### Per-service professionals (admin only)
+An appointment can be split across staff — one service with one professional,
+another with someone else. `service_employee_ids` runs positionally parallel to
+`services`; `employee_id` stays the **lead** (element 0) so RLS, indexes and
+reminders are untouched. The admin UI keeps the single-dropdown case as the
+default and puts splitting behind a toggle, since almost every booking is one
+professional doing everything. Employees always book for themselves — enforced
+by a DB trigger, not just the UI.
+
+### Optional client phone
+The phone is optional — walk-ins often don't leave one. `hasWhatsApp()` in
+[`lib/whatsapp.ts`](src/lib/whatsapp.ts) is the single predicate gating every
+WhatsApp affordance; without a usable number the button on the card renders
+**disabled** (not hidden, so the absence is legible) and cancelling records the
+reason without offering to notify anyone. A *partially* typed number is rejected
+by the form rather than saved, since it would enable a button that opens on a
+number nobody owns.
+
 ### Cancellation → WhatsApp
 Cancelling opens a modal that **requires** a reason, writes
-`status/cancellation_reason/canceled_at`, then opens a `wa.me` deep link with a
-pre-written pt-BR notice ([`lib/whatsapp.ts`](src/lib/whatsapp.ts)).
+`status/cancellation_reason/canceled_at`, then — when a phone is on file —
+opens a `wa.me` deep link with a pre-written pt-BR notice
+([`lib/whatsapp.ts`](src/lib/whatsapp.ts)).
+
+### Brand name
+The salon's public name lives in [`lib/brand.ts`](src/lib/brand.ts) because it
+appears in several outgoing client messages. Three files can't import it and
+carry the literal: `index.html`, `vite.config.ts` (manifest) and `src/sw.ts`.
+The server repeats it in `supabase/functions/_shared/brand.ts` — change both.
 
 ### Permissions
 The UI hides admin-only affordances, but **RLS is the real enforcement**.

@@ -8,6 +8,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useLogout } from "@/features/auth/hooks";
 import { cn } from "@/lib/cn";
+import { BRAND_NAME } from "@/lib/brand";
 
 const NAV = [
   { to: "/", label: "Agenda", icon: CalendarDays, end: true },
@@ -36,7 +37,7 @@ export function AppShell() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold leading-tight text-text">
-              Esabel Santos Beleza
+              {BRAND_NAME}
             </p>
             <p className="truncate text-xs leading-tight text-muted">
               {profile?.full_name}
