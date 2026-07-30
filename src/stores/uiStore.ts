@@ -41,6 +41,25 @@ interface UIState {
   agendaScope: AgendaScope;
   setAgendaScope: (scope: AgendaScope) => void;
 
+  /**
+   * Master-grid column visibility, in two layers.
+   *
+   * By default a professional with no appointments that day is hidden, which
+   * keeps the grid to the staff actually on shift. `gridShowAllEmployees` lifts
+   * that rule wholesale.
+   *
+   * `gridEmployeeOverrides` is the per-professional escape hatch and always
+   * wins: true = always show, false = always hide, absent = follow the rule
+   * above. A plain hidden-set can't express this — the owner must be able to
+   * reveal someone with an empty day, since otherwise there is no column to
+   * click and they could never be booked from the grid at all.
+   */
+  gridShowAllEmployees: boolean;
+  toggleGridShowAll: () => void;
+  gridEmployeeOverrides: Record<string, boolean>;
+  /** `visible` is the professional's CURRENT state; this stores the opposite. */
+  setGridEmployeeOverride: (id: string, visible: boolean) => void;
+
   /** Chromium install prompt, stashed until the user taps "Instalar". */
   installPrompt: BeforeInstallPromptEvent | null;
   setInstallPrompt: (event: BeforeInstallPromptEvent | null) => void;
@@ -58,6 +77,22 @@ export const useUIStore = create<UIState>((set, get) => ({
   setAgendaStatus: (agendaStatus) => set({ agendaStatus }),
   agendaScope: "all",
   setAgendaScope: (agendaScope) => set({ agendaScope }),
+
+  gridShowAllEmployees: false,
+  // Switching the global rule clears the per-professional overrides: they were
+  // decisions made against the old rule, and silently keeping them would make
+  // the toggle look broken for whichever columns had been overridden.
+  toggleGridShowAll: () =>
+    set((state) => ({
+      gridShowAllEmployees: !state.gridShowAllEmployees,
+      gridEmployeeOverrides: {},
+    })),
+
+  gridEmployeeOverrides: {},
+  setGridEmployeeOverride: (id, visible) =>
+    set((state) => ({
+      gridEmployeeOverrides: { ...state.gridEmployeeOverrides, [id]: !visible },
+    })),
 
   installPrompt: null,
   setInstallPrompt: (installPrompt) => set({ installPrompt }),

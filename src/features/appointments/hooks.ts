@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { queryKeys } from "@/lib/queryClient";
 import { dayRangeISO, monthRangeISO, toDateParam, toMonthParam } from "@/lib/dates";
+import { slotWindowISO } from "@/lib/grid";
 import { currentUserId } from "@/stores/authStore";
 import type { AppointmentInput, AppointmentWithEmployee, Profile } from "@/types/domain";
 
@@ -71,6 +72,43 @@ export function useEmployeeOptions(enabled = true) {
       if (error) throw error;
       return data ?? [];
     },
+  });
+}
+
+/**
+ * Active appointments that already occupy the same half-hour block as `at`, for
+ * any of `employeeIds`.
+ *
+ * Imperative rather than a useQuery: this runs at submit time, and a cached
+ * answer is worse than none — the whole point is to reflect what another device
+ * booked seconds ago. It reads one slot, so the payload is tiny.
+ *
+ * Checks `service_employee_ids` as well as the lead `employee_id`: on a split
+ * appointment every assigned professional is genuinely busy.
+ */
+export async function fetchSlotConflicts(params: {
+  employeeIds: string[];
+  at: Date;
+  /** The appointment being edited, excluded from its own conflict check. */
+  excludeId?: string;
+}): Promise<AppointmentWithEmployee[]> {
+  const { employeeIds, at, excludeId } = params;
+  if (employeeIds.length === 0) return [];
+
+  const { start, end } = slotWindowISO(at);
+  const { data, error } = await supabase
+    .from("appointments")
+    .select(SELECT_WITH_EMPLOYEE)
+    .neq("status", "canceled")
+    .gte("scheduled_at", start)
+    .lt("scheduled_at", end);
+  if (error) throw error;
+
+  const wanted = new Set(employeeIds);
+  return ((data ?? []) as unknown as AppointmentWithEmployee[]).filter((a) => {
+    if (a.id === excludeId) return false;
+    if (wanted.has(a.employee_id)) return true;
+    return (a.service_employee_ids ?? []).some((id) => wanted.has(id));
   });
 }
 

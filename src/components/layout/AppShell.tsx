@@ -1,7 +1,15 @@
 import { Suspense } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CalendarDays, LogOut, Scissors, Settings, Users, UsersRound } from "lucide-react";
+import {
+  CalendarDays,
+  LayoutGrid,
+  LogOut,
+  Scissors,
+  Settings,
+  Users,
+  UsersRound,
+} from "lucide-react";
 import { PageFallback } from "@/components/ui/Feedback";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuthStore } from "@/stores/authStore";
@@ -12,6 +20,7 @@ import { BRAND_NAME } from "@/lib/brand";
 
 const NAV = [
   { to: "/", label: "Agenda", icon: CalendarDays, end: true },
+  { to: "/grade", label: "Grade", icon: LayoutGrid, end: false },
   { to: "/clientes", label: "Clientes", icon: Users, end: false },
   { to: "/equipe", label: "Equipe", icon: UsersRound, end: false, adminOnly: true },
   { to: "/ajustes", label: "Ajustes", icon: Settings, end: false },

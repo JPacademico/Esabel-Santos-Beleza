@@ -112,6 +112,64 @@ sync as the joined display string, which is what push notifications read.
 [`lib/services.ts`](src/lib/services.ts) falls back to splitting that string for
 any payload predating the column.
 
+### Master grid (`/grade`)
+The paper-agenda view: half-hour rows 09:00–18:00 down, professionals across.
+[`lib/grid.ts`](src/lib/grid.ts) owns the slot maths so the component stays
+presentational.
+
+**The grid owns its own scroll box** (`max-h` + `overflow-auto`) rather than
+scrolling with the page, and that is forced rather than chosen: `position:
+sticky` resolves against the nearest scrolling ancestor, and the moment an
+element gets `overflow-x: auto` the other axis computes to `auto` too, making it
+that ancestor. A header sticky to the *page* while columns scroll horizontally
+inside the same element are mutually exclusive. One scroll box gives both axes a
+sticky edge — header `top-0`, hour rail `left-0` with `.grid-rail`'s shadow — and
+behaves the same on mobile.
+
+Canceled appointments are excluded (a cancellation frees the slot), and a split
+booking occupies **every** assigned professional's column. Appointments outside
+business hours are counted in a footnote rather than silently dropped.
+
+Booking a cell is owner-only and further gated on the day being within the
+2-month horizon. Employees get a genuinely inert grid — plain divs, not disabled
+buttons, so ~150 dead controls stay out of the tab order.
+
+**Column visibility has two layers.** By default a professional with no
+appointments that day is hidden, keeping the grid to whoever is on shift.
+`gridShowAllEmployees` lifts that rule; `gridEmployeeOverrides` is the
+per-professional escape hatch and always wins. The escape hatch is required, not
+a nicety: without it a professional with an empty day has no column, so she
+could never be booked from this tab. The auto rule is also **suspended while
+loading and when nobody has any appointment** — otherwise an empty day hides
+every column and there is nothing to book against.
+
+On desktop the grid gets explicit ‹ › scroll buttons, because a mouse wheel only
+scrolls vertically and the columns past the edge are otherwise reachable only by
+dragging a thin scrollbar. They are `md:`-only (touch already swipes) and appear
+only when the content genuinely overflows — measured with a `ResizeObserver` on
+both the scroller and the inner grid, since toggling columns changes the grid's
+width without resizing the scroller.
+
+**Re-render discipline** ([`GridCell`](src/features/appointments/GridCell.tsx) is
+memoised): empty cells share one frozen `NO_APPOINTMENTS` array so a data change
+doesn't churn them, callbacks are `useCallback`-stable, and the "past" tint comes
+from a `slotPast` **boolean per row** rather than a `now: Date` per cell — a Date
+prop would re-render all ~150 cells every minute.
+
+### Double-booking warning
+A soft block, not a rule. [`fetchSlotConflicts`](src/features/appointments/hooks.ts)
+runs at submit time inside `AppointmentForm`, so it covers **both** the grid and
+the day agenda by construction. It checks `service_employee_ids` as well as the
+lead, since every professional on a split booking is genuinely busy.
+
+Three deliberate choices: it is imperative rather than a `useQuery` (a cached
+answer is worse than none when the point is what another device just booked); the
+warning reuses the same modal via a two-step body, like `CancelModal`, instead of
+stacking overlays; and **if the check itself fails, the save proceeds** — refusing
+to book because we couldn't *warn* would be worse than the double booking. With
+no duration field, "occupied" can only honestly mean "another appointment starts
+in the same half-hour", which is exactly one grid cell.
+
 ### Agenda filtering
 Two independent filters, both held in `uiStore` rather than page state — the
 app shell keys the page subtree on the pathname, so local state would reset
@@ -192,6 +250,7 @@ supabase secrets set APP_BASE_URL="https://<your-domain>"
 | `/activate?token=` | public | Employee sets their password |
 | `/` | auth | Today's agenda (default view) |
 | `/agenda/:date` | auth | Specific day (`yyyy-MM-dd`) |
+| `/grade`, `/grade/:date` | auth | Master grid — read-only for employees |
 | `/clientes` | auth | Client directory (CRM) |
 | `/equipe` | **admin** | Create/deactivate employees |
 | `/ajustes` | auth | Theme, reminders, install, logout |

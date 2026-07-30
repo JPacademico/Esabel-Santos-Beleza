@@ -119,6 +119,16 @@
   .list-swap {
     animation: list-swap 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
   }
+
+  /*
+    Master grid hour rail. The shadow is what separates the sticky left column
+    from the cells sliding underneath it — without it the numbers appear to sit
+    on top of the appointments during a horizontal scroll. Applied to the
+    corner cell too, so the elevation runs the full height of the grid.
+  */
+  .grid-rail {
+    box-shadow: 2px 0 6px -3px rgb(0 0 0 / 0.28);
+  }
 }
 
 @keyframes page-enter {

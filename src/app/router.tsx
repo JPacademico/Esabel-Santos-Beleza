@@ -13,6 +13,9 @@ import { AgendaPage } from "@/features/appointments/AgendaPage";
 const ActivatePage = lazy(() =>
   import("@/features/auth/ActivatePage").then((m) => ({ default: m.ActivatePage })),
 );
+const MasterGridPage = lazy(() =>
+  import("@/features/appointments/MasterGridPage").then((m) => ({ default: m.MasterGridPage })),
+);
 const ClientsPage = lazy(() =>
   import("@/features/clients/ClientsPage").then((m) => ({ default: m.ClientsPage })),
 );
@@ -45,6 +48,9 @@ const router = createBrowserRouter(
         // Default view is today's agenda.
         { path: "/", element: <AgendaPage /> },
         { path: "/agenda/:date", element: <AgendaPage /> },
+        // Master grid: same day-in-the-URL contract as the agenda.
+        { path: "/grade", element: <MasterGridPage /> },
+        { path: "/grade/:date", element: <MasterGridPage /> },
         { path: "/clientes", element: <ClientsPage /> },
         {
           path: "/equipe",
