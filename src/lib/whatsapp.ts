@@ -82,14 +82,16 @@ export function cancellationMessage(o: {
   clientName: string;
   service: string;
   scheduledAt: string;
-  reason: string;
+  /** Optional: a quick cancel may carry no reason at all. */
+  reason?: string;
 }): string {
+  const trimmed = o.reason?.trim();
   return (
     `${greeting(o.clientName)}\n\n` +
     `Precisamos *cancelar* o seu agendamento:\n` +
     `🗓️ ${o.service}\n` +
     `⏰ ${formatFullPtBR(o.scheduledAt)}\n` +
-    `📝 Motivo: ${o.reason}\n\n` +
+    (trimmed ? `📝 Motivo: ${trimmed}\n\n` : `\n`) +
     `Pedimos desculpas pelo transtorno. ` +
     `É só nos chamar por aqui que reagendamos no melhor horário para você! 💖`
   );

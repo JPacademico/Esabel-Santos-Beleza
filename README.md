@@ -221,10 +221,14 @@ by the form rather than saved, since it would enable a button that opens on a
 number nobody owns.
 
 ### Cancellation → WhatsApp
-Cancelling opens a modal that **requires** a reason, writes
-`status/cancellation_reason/canceled_at`, then — when a phone is on file —
-opens a `wa.me` deep link with a pre-written pt-BR notice
-([`lib/whatsapp.ts`](src/lib/whatsapp.ts)).
+The reason is **optional** — a one-tap "quick cancel" with nothing typed is a
+normal, supported call, not an incomplete one (owner request; it used to be
+mandatory). Cancelling writes `status/canceled_at` and `cancellation_reason`
+(null if left blank), then — when a phone is on file — opens a `wa.me` deep
+link with a pre-written pt-BR notice ([`lib/whatsapp.ts`](src/lib/whatsapp.ts));
+the message includes the "Motivo" line only when one was actually given. Only
+`canceled_at` is required by the DB (`cancel_requires_timestamp`) — the same
+shape as `concluded_at` on completion.
 
 ### Brand name
 The salon's public name lives in [`lib/brand.ts`](src/lib/brand.ts) because it

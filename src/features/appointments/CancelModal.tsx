@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, MessageCircle } from "lucide-react";
+import { CheckCircle2, Info, MessageCircle } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -30,8 +30,9 @@ interface CancelResult {
 }
 
 /**
- * Cancellation is a two-part commitment: persist the reason, then make sure
- * the client actually gets told.
+ * Cancellation is a quick action, not a form: the reason is optional (a
+ * one-tap "quick cancel" is the requested, supported path), then the modal
+ * offers to tell the client.
  *
  * The WhatsApp hand-off must survive iOS: a popup opened after an `await` is
  * blocked there, so we always land on a confirmation step containing a real
@@ -58,13 +59,17 @@ export function CancelModal({ appointment, onClose }: Props) {
     setResult(null);
   }, [appointment]);
 
+  // Optional by design — a quick cancel with nothing typed is a normal,
+  // supported call, not an incomplete one.
   const trimmed = reason.trim();
-  const valid = trimmed.length >= 3;
 
   async function onConfirm() {
-    if (!appointment || !valid) return;
+    if (!appointment) return;
     try {
-      await cancelMutation.mutateAsync({ id: appointment.id, reason: trimmed });
+      await cancelMutation.mutateAsync({
+        id: appointment.id,
+        reason: trimmed || undefined,
+      });
 
       // No usable number → the cancellation still stands, we just can't notify.
       const canMessage = hasWhatsApp(appointment.client_phone);
@@ -78,7 +83,7 @@ export function CancelModal({ appointment, onClose }: Props) {
         clientName: appointment.client_name,
         service: formatServices(appointment),
         scheduledAt: appointment.scheduled_at,
-        reason: trimmed,
+        reason: trimmed || undefined,
       });
 
       setResult({
@@ -122,7 +127,6 @@ export function CancelModal({ appointment, onClose }: Props) {
               fullWidth
               onClick={() => void onConfirm()}
               loading={cancelMutation.isPending}
-              disabled={!valid}
             >
               Confirmar
             </Button>
@@ -171,15 +175,16 @@ export function CancelModal({ appointment, onClose }: Props) {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="flex gap-3 rounded-lg border border-warning/25 bg-warning/10 p-3">
-            <AlertTriangle className="h-5 w-5 shrink-0 text-warning" />
+          <div className="flex gap-3 rounded-lg border border-border bg-surface-2 p-3">
+            <Info className="h-5 w-5 shrink-0 text-muted" />
             <p className="text-sm text-text">
-              O motivo é <strong>obrigatório</strong>
+              Cancelamento rápido — o motivo é opcional.
               {appointment && hasWhatsApp(appointment.client_phone) ? (
-                <> e será enviado à cliente na mensagem de cancelamento.</>
+                <> Se preencher, ele é incluído na mensagem enviada à cliente.</>
               ) : (
                 <>
-                  . Este agendamento não tem telefone, então ele ficará registrado aqui, mas{" "}
+                  {" "}
+                  Este agendamento não tem telefone, então{" "}
                   <strong>nenhum aviso será enviado</strong>.
                 </>
               )}
@@ -193,7 +198,7 @@ export function CancelModal({ appointment, onClose }: Props) {
                 <button
                   key={quick}
                   type="button"
-                  onClick={() => setReason(quick)}
+                  onClick={() => setReason(reason === quick ? "" : quick)}
                   className={
                     "rounded-full border px-3 py-1.5 text-xs font-medium transition " +
                     (reason === quick
@@ -208,17 +213,13 @@ export function CancelModal({ appointment, onClose }: Props) {
           </div>
 
           <Textarea
-            label="Motivo do cancelamento"
-            placeholder="Descreva o motivo…"
+            label="Motivo (opcional)"
+            placeholder="Descreva o motivo, se quiser…"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={3}
             maxLength={200}
-            required
             hint={`${reason.length}/200`}
-            error={
-              reason.length > 0 && !valid ? "Descreva o motivo com ao menos 3 caracteres." : undefined
-            }
             disabled={cancelMutation.isPending}
           />
         </div>

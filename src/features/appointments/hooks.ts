@@ -169,16 +169,21 @@ export function useUpdateAppointment() {
   });
 }
 
-/** Cancellation always carries a reason (mirrors the DB check constraint). */
+/**
+ * Cancellation. The reason is optional — a "quick cancel" with nothing typed
+ * is a normal, supported call, mirroring the DB (only `canceled_at` is
+ * required by `cancel_requires_timestamp`; the reason has no such constraint).
+ */
 export function useCancelAppointment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+    mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
+      const trimmed = reason?.trim();
       const { data, error } = await supabase
         .from("appointments")
         .update({
           status: "canceled",
-          cancellation_reason: reason,
+          cancellation_reason: trimmed ? trimmed : null,
           canceled_at: new Date().toISOString(),
         })
         .eq("id", id)
