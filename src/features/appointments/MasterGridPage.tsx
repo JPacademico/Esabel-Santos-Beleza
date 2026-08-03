@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useNavigate, useParams } from "react-router-dom";
 import { CalendarX2, ChevronLeft, ChevronRight, LayoutGrid, Lock } from "lucide-react";
 import { EmptyState } from "@/components/ui/Feedback";
+import { toast } from "@/lib/toast";
 import { useAuthStore } from "@/stores/authStore";
 import { useUIStore } from "@/stores/uiStore";
 import { useNowTick } from "@/hooks/useNowTick";
@@ -15,6 +16,7 @@ import {
   slotLabel,
   slotOf,
 } from "@/lib/grid";
+import { isAssignedTo } from "@/lib/services";
 import { DayPager } from "./DayPager";
 import { MonthGrid } from "./MonthGrid";
 import { EmployeeFilter } from "./EmployeeFilter";
@@ -43,6 +45,7 @@ export function MasterGridPage() {
   const { date } = useParams<{ date?: string }>();
   const navigate = useNavigate();
   const isAdmin = useAuthStore((s) => s.isAdmin);
+  const userId = useAuthStore((s) => s.session?.user.id ?? "");
 
   // Memoised for the same reason as AgendaPage: a fresh Date every render
   // churns every child that takes it as a prop.
@@ -150,10 +153,17 @@ export function MasterGridPage() {
   const nowMs = now.getTime();
   const columns = visibleEmployees.length;
 
-  // Only the owner books from the grid, and only on a day that is actually
-  // bookable — offering a cell on a day past the 2-month horizon would open a
-  // form that can never submit.
-  const canBook = isAdmin && isWithinHorizon(day);
+  /**
+   * Whether ANY empty cell renders as clickable — both roles now, gated only
+   * on the day being bookable. Offering a cell past the 2-month horizon would
+   * open a form that can never submit, so that check stays here rather than
+   * moving into the per-click authorization below.
+   *
+   * WHO a click is actually allowed to book for is a separate question,
+   * answered per-cell in `handleBook` — see the note there for why the two are
+   * split.
+   */
+  const canBook = isWithinHorizon(day);
 
   function goToDay(next: Date) {
     navigate(`/grade/${toDateParam(next)}`);
@@ -163,21 +173,52 @@ export function MasterGridPage() {
   // Stable identities — these are handed to every memoised cell.
   const handleBook = useCallback(
     (employeeId: string, minutesOfDay: number) => {
+      /*
+        Employees may book, but only their own column. Checked HERE — at the
+        moment of the click — rather than by rendering a different cell for
+        "your column" vs "everyone else's": every empty cell then looks and
+        behaves identically regardless of who is looking at it (no per-role
+        grid variant to keep in sync), and the restriction is explained by the
+        toast the one time it's actually relevant, instead of a grid that's
+        silently half-disabled with no explanation.
+
+        The server enforces the same rule independently (the completion
+        trigger rejects a non-admin assigning work to anyone else), so this is
+        UX, not the real gate — same relationship as the 2-month horizon.
+      */
+      if (!isAdmin && employeeId !== userId) {
+        toast.error("Não autorizado, apenas admin.");
+        return;
+      }
       setEditing(null);
       setSeed({ scheduledAt: slotDate(day, minutesOfDay), employeeId });
       setFormOpen(true);
     },
-    [day],
+    [day, isAdmin, userId],
   );
 
   const handleOpen = useCallback(
     (appointment: AppointmentWithEmployee) => {
-      if (!isAdmin) return; // employees read the grid, they don't act on it
+      /*
+        Owner may open anything; an employee only an appointment they're
+        assigned to. `isAssignedTo` is the same predicate AppointmentCard uses
+        for its edit/cancel permission, so "editable from the grid" and
+        "editable from the Agenda tab" can never disagree.
+
+        This mirrors handleBook's defense-in-depth: GridCell's `canOpen` prop
+        already prevents the click from firing in the ordinary case (a
+        teammate's column renders as an inert div), but re-checking here means
+        the real rule lives in one place instead of trusting the render layer.
+      */
+      if (!isAdmin && !isAssignedTo(appointment, userId)) {
+        toast.error("Não autorizado, apenas admin.");
+        return;
+      }
       setSeed({});
       setEditing(appointment);
       setFormOpen(true);
     },
-    [isAdmin],
+    [isAdmin, userId],
   );
 
   const closeForm = useCallback(() => {
@@ -257,7 +298,8 @@ export function MasterGridPage() {
       {!isAdmin && (
         <p className="mb-3 flex items-center gap-1.5 rounded-lg bg-surface-2 px-3 py-2 text-xs text-muted">
           <Lock className="h-3.5 w-3.5 shrink-0" />
-          Visualização da equipe. Para agendar, use a aba Agenda.
+          Na sua coluna você pode agendar horários livres e editar seus
+          agendamentos. As demais são somente leitura.
         </p>
       )}
 
@@ -375,7 +417,11 @@ export function MasterGridPage() {
                       employeeId={employee.id}
                       minutesOfDay={minutesOfDay}
                       canBook={canBook}
-                      canOpen={isAdmin}
+                      // Owner opens any column; an employee only their own —
+                      // and by construction every appointment bucketed into
+                      // their column is one they're assigned to. See the note
+                      // on GridCell's `canOpen` prop.
+                      canOpen={isAdmin || employee.id === userId}
                       onBook={handleBook}
                       onOpen={handleOpen}
                       slotPast={slotPast}

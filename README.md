@@ -130,9 +130,27 @@ Canceled appointments are excluded (a cancellation frees the slot), and a split
 booking occupies **every** assigned professional's column. Appointments outside
 business hours are counted in a footnote rather than silently dropped.
 
-Booking a cell is owner-only and further gated on the day being within the
-2-month horizon. Employees get a genuinely inert grid — plain divs, not disabled
-buttons, so ~150 dead controls stay out of the tab order.
+Booking an empty cell is gated on the day being within the 2-month horizon —
+that part applies to both roles equally, since offering a cell past the horizon
+would open a form that can never submit. **Who** a click is allowed to book for
+is a separate, later check: the owner may book any column, an employee only
+their own. Every empty cell renders identically for both roles (no per-role grid
+variant to keep in sync); an employee tapping someone else's column gets a
+"Não autorizado, apenas admin." toast instead of the form opening. The server
+enforces the same rule independently (the completion trigger rejects a non-admin
+assigning work to anyone else), so the toast is UX, not the real gate.
+
+Opening an *existing* appointment follows the same shape: the owner may open any
+column, an employee only their own. This works with no per-appointment check at
+the cell layer, because bucketing already only places an appointment into a
+column for professionals assigned to it (see `cells` above) — "this is my
+column" and "I'm assigned to whatever's in it" are the same fact by
+construction. `handleOpen` still re-checks with
+[`isAssignedTo()`](src/lib/services.ts) as a defense-in-depth safety net — the
+same predicate `AppointmentCard` uses for its edit/cancel permission, so
+"editable from the grid" and "editable from the Agenda tab" can never disagree.
+A column that isn't yours renders as plain divs, not disabled buttons, so a
+screenful of dead controls doesn't sit in the tab order.
 
 **Column visibility has two layers.** By default a professional with no
 appointments that day is hidden, keeping the grid to whoever is on shift.

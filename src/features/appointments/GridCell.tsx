@@ -20,12 +20,30 @@ interface Props {
   employeeId: string;
   minutesOfDay: number;
   /**
-   * Booking an empty cell. Owner only, and only on a bookable day — so this is
-   * NOT the same as `canOpen`: the owner may still open an existing appointment
-   * on a day that is itself past the booking horizon.
+   * Whether an empty cell renders as a clickable "+" at all — true for both
+   * roles whenever the day is within the booking horizon.
+   *
+   * This does NOT mean the click will succeed: an employee tapping another
+   * professional's column still gets a "not authorized" toast. That check
+   * happens in the parent's `onBook`, deliberately not here, so every empty
+   * cell looks and behaves identically and the restriction is taught by the
+   * toast rather than by an inconsistent grid.
+   *
+   * Also not the same thing as `canOpen`: the owner may still open an existing
+   * appointment on a day that is itself past the booking horizon.
    */
   canBook: boolean;
-  /** Opening an existing appointment for editing. Owner only. */
+  /**
+   * Whether the appointment(s) in THIS column may be opened for editing.
+   *
+   * The owner may always open any column. An employee may open only their own
+   * — which, by construction, covers every appointment actually shown here: an
+   * appointment is bucketed into a column only for professionals assigned to
+   * it (see MasterGridPage), so "this is my column" and "I'm assigned to
+   * whatever's in it" are the same fact. No per-appointment check is needed at
+   * this layer; the parent's `handleOpen` still re-checks it directly as a
+   * defense-in-depth safety net, the same way it re-checks booking.
+   */
   canOpen: boolean;
   onBook: (employeeId: string, minutesOfDay: number) => void;
   onOpen: (appointment: AppointmentWithEmployee) => void;
@@ -83,9 +101,10 @@ function GridCellBase({
         // no clock is read here — see the note on `slotPast`.
         const awaiting = appointment.status === "scheduled" && slotPast;
         const services = appointmentServices(appointment);
-        // A read-only viewer gets a div, not a disabled button: the grid is
-        // genuinely inert for employees, and a screenful of dead controls in the
-        // tab order is worse than none.
+        // A viewer who can't act on this column gets a div, not a disabled
+        // button: a screenful of dead controls in the tab order is worse than
+        // none, and this is the common case for an employee looking at a
+        // teammate's column.
         const Tag = canOpen ? "button" : "div";
         return (
           <Tag
