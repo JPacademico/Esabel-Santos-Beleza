@@ -274,5 +274,5 @@ supabase secrets set APP_BASE_URL="https://<your-domain>"
 | `/agenda/:date` | auth | Specific day (`yyyy-MM-dd`) |
 | `/grade`, `/grade/:date` | auth | Master grid — read-only for employees |
 | `/clientes` | auth | Client directory (CRM) |
-| `/equipe` | **admin** | Create/deactivate employees |
+| `/equipe` | **admin** | Create/deactivate/reactivate employees |
 | `/ajustes` | auth | Theme, reminders, install, logout |

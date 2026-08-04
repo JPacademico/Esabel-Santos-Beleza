@@ -40,6 +40,20 @@ export function useResetEmployeeAccess() {
   });
 }
 
+/**
+ * Undoes a soft deactivation: unbans the account and restores `status`. If she
+ * hadn't finished onboarding before being deactivated, this alone won't give
+ * her a working password — the "Reenviar acesso" action reappears once status
+ * stops being `inactive`, which is the follow-up for that case.
+ */
+export function useReactivateEmployee() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (user_id: string) => invokeFunction<{ ok: true }>("reactivate-employee", { user_id }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.employees }),
+  });
+}
+
 export function useDeleteEmployee() {
   const qc = useQueryClient();
   return useMutation({

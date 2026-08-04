@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Crown, KeyRound, Plus, ShieldCheck, UserMinus, UsersRound } from "lucide-react";
+import { Crown, KeyRound, Plus, RotateCcw, ShieldCheck, UserMinus, UsersRound } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Field";
@@ -11,7 +11,7 @@ import { friendlyError } from "@/lib/cn";
 import { useAuthStore } from "@/stores/authStore";
 import { CreateEmployeeForm } from "./CreateEmployeeForm";
 import { ResetAccessModal } from "./ResetAccessModal";
-import { useDeleteEmployee, useEmployees } from "./hooks";
+import { useDeleteEmployee, useEmployees, useReactivateEmployee } from "./hooks";
 import type { AccountStatus, Profile } from "@/types/domain";
 
 const STATUS_META: Record<AccountStatus, { label: string; tone: "success" | "warning" | "neutral" }> = {
@@ -24,6 +24,7 @@ export function EmployeesPage() {
   const currentUserId = useAuthStore((s) => s.session?.user.id);
   const { data: employees, isLoading } = useEmployees();
   const deleteMutation = useDeleteEmployee();
+  const reactivateMutation = useReactivateEmployee();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [resetting, setResetting] = useState<Profile | null>(null);
@@ -33,6 +34,18 @@ export function EmployeesPage() {
   const activeOthers = (employees ?? []).filter(
     (e) => e.status === "active" && e.id !== removing?.id,
   );
+
+  async function handleReactivate(employee: Profile) {
+    try {
+      await reactivateMutation.mutateAsync(employee.id);
+      const firstName = employee.full_name.trim().split(/\s+/)[0] ?? employee.full_name;
+      toast.success(
+        `${firstName} reativada. Se ela não lembrar a senha, use "Reenviar acesso".`,
+      );
+    } catch (error) {
+      toast.error(friendlyError(error));
+    }
+  }
 
   async function confirmRemove() {
     if (!removing) return;
@@ -157,6 +170,25 @@ export function EmployeesPage() {
                         className="rounded-lg p-2 text-muted transition hover:bg-danger/10 hover:text-danger"
                       >
                         <UserMinus className="h-4 w-4" />
+                      </button>
+                    )}
+
+                    {/* Undoes a deactivation — direct action, no confirmation
+                        modal, same as "Reabrir" on a concluded appointment:
+                        restoring access isn't the destructive half of this
+                        pair, so it doesn't need the same friction. */}
+                    {!isAdmin && employee.status === "inactive" && (
+                      <button
+                        onClick={() => void handleReactivate(employee)}
+                        disabled={
+                          reactivateMutation.isPending &&
+                          reactivateMutation.variables === employee.id
+                        }
+                        aria-label="Reativar"
+                        title="Reativar"
+                        className="rounded-lg p-2 text-muted transition hover:bg-success/10 hover:text-success disabled:opacity-50"
+                      >
+                        <RotateCcw className="h-4 w-4" />
                       </button>
                     )}
                   </div>
